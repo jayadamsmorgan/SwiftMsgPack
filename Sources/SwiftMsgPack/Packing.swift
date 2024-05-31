@@ -18,75 +18,131 @@ public protocol MessagePackable {
 
 public extension MessagePackable {
 
-    func pack() throws -> Data {
-        return try pack().get()
-    }
-
     func pack() -> Result<Data, MessagePackError> {
         let value = packValue()
         switch value {
         case .value(let value):
-            if #available(macOS 11.0, *) {
-                switch value {
-                case is Int:
-                    #if __LP64__
-                    return packWithOption(option: .int_64)
-                    #else
-                    return packWithOption(option: .int_32)
-                    #endif
-                case is Int8:
-                    return packWithOption(option: .int_8)
-                case is Int16:
-                    return packWithOption(option: .int_16)
-                case is Int32:
-                    return packWithOption(option: .int_32)
-                case is Int64:
-                    return packWithOption(option: .int_64)
-                case is UInt:
-                    #if __LP64__
-                    return packWithOption(option: .uint_64)
-                    #else
-                    return packWithOption(option: .uint_32)
-                    #endif
-                case is UInt8:
-                    return packWithOption(option: .uint_8)
-                case is UInt16:
-                    return packWithOption(option: .uint_16)
-                case is UInt32:
-                    return packWithOption(option: .uint_32)
-                case is UInt64:
-                    return packWithOption(option: .uint_64)
-                case is Float16:
-                    return packWithOption(option: .float_32)
-                case is Float32:
-                    return packWithOption(option: .float_32)
-                case is Float64:
-                    return packWithOption(option: .float_64)
-                case is String:
-                    return packWithOption(option: .str_32)
-                case is Data:
-                    return packWithOption(option: .bin_32)
-                case is Array<any MessagePackable>:
-                    return packWithOption(option: .array_32)
-                case is Bool:
-                    return packWithOption(option: self as! Bool ? .true : .false)
-                // case is Dictionary<MessagePackable, MessagePackable>: // ????
-                //     break
-                default:
-                    return .failure(.unknownType)
-                }
-            }
-            break
+            return packWithOption(value: value)
         case .valueWithOption(let value, let option):
-            break
+            return packWithOption(value: value, option: option)
         case .structure(let values):
-            break
+            return packStructure(values: values)
         }
+    }
 
+    private func packWithOption(value: any MessagePackable) -> Result<Data, MessagePackError> {
+        switch value {
+        case is Int:
+            return packWithOption(value: value, option: .int_64)
+        case is Int8:
+            return packWithOption(value: value, option: .int_8)
+        case is Int16:
+            return packWithOption(value: value, option: .int_16)
+        case is Int32:
+            return packWithOption(value: value, option: .int_32)
+        case is Int64:
+            return packWithOption(value: value, option: .int_64)
+        case is UInt:
+            return packWithOption(value: value, option: .uint_64)
+        case is UInt8:
+            return packWithOption(value: value, option: .uint_8)
+        case is UInt16:
+            return packWithOption(value: value, option: .uint_16)
+        case is UInt32:
+            return packWithOption(value: value, option: .uint_32)
+        case is UInt64:
+            return packWithOption(value: value, option: .uint_64)
+        case is Float32:
+            return packWithOption(value: value, option: .float_32)
+        case is Float64:
+            return packWithOption(value: value, option: .float_64)
+        case is String:
+            return packWithOption(value: value, option: .str_32)
+        case is Data:
+            return packWithOption(value: value, option: .bin_32)
+        case is Array<any MessagePackable>:
+            return packWithOption(value: value, option: .array_32)
+        case is Bool:
+            return packWithOption(value: value, option: self as! Bool ? .true : .false)
+        // case is Dictionary<MessagePackable, MessagePackable>:  // ????
+        //     break
+        default:
+            return .failure(.unknownType)
+        }
+    }
+
+    func pack() async -> Result<Data, MessagePackError> {
+        let value = packValue()
+        switch value {
+        case .value(let value):
+            return await packWithOption(value: value)
+        case .valueWithOption(let value, let option):
+            return await packWithOption(value: value, option: option)
+        case .structure(let values):
+            return await packStructure(values: values)
+        }
+    }
+
+    private func packWithOption(value: any MessagePackable) async -> Result<Data, MessagePackError> {
+        switch value {
+        case is Int:
+            return await packWithOption(value: value, option: .int_64)
+        case is Int8:
+            return await packWithOption(value: value, option: .int_8)
+        case is Int16:
+            return await packWithOption(value: value, option: .int_16)
+        case is Int32:
+            return await packWithOption(value: value, option: .int_32)
+        case is Int64:
+            return await packWithOption(value: value, option: .int_64)
+        case is UInt:
+            return await packWithOption(value: value, option: .uint_64)
+        case is UInt8:
+            return await packWithOption(value: value, option: .uint_8)
+        case is UInt16:
+            return await packWithOption(value: value, option: .uint_16)
+        case is UInt32:
+            return await packWithOption(value: value, option: .uint_32)
+        case is UInt64:
+            return await packWithOption(value: value, option: .uint_64)
+        case is Float32:
+            return await packWithOption(value: value, option: .float_32)
+        case is Float64:
+            return await packWithOption(value: value, option: .float_64)
+        case is String:
+            return await packWithOption(value: value, option: .str_32)
+        case is Data:
+            return await packWithOption(value: value, option: .bin_32)
+        case is Array<any MessagePackable>:
+            return await packWithOption(value: value, option: .array_32)
+        case is Bool:
+            return await packWithOption(value: value, option: self as! Bool ? .true : .false)
+        // case is Dictionary<MessagePackable, MessagePackable>: // ????
+        //     break
+        default:
+            return .failure(.unknownType)
+        }
+    }
+
+    private func packWithOption(
+        value: any MessagePackable,
+        option: MessagePackType
+    ) -> Result<Data, MessagePackError> {
         return .failure(.notImplemented)
     }
 
-    private func packWithOption(option: MessagePackType) -> Result<Data, MessagePackError> {
+    private func packWithOption(
+        value: any MessagePackable,
+        option: MessagePackType
+    ) async -> Result<Data, MessagePackError> {
+        return .failure(.notImplemented)
+    }
+
+    private func packStructure(values: [MessagePackValue]) -> Result<Data, MessagePackError> {
+        return .failure(.notImplemented)
+    }
+
+    private func packStructure(values: [MessagePackValue]) async -> Result<Data, MessagePackError> {
         return .failure(.notImplemented)
     }
 }

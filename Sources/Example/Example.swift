@@ -23,53 +23,39 @@ struct Example: MessagePackable, CustomStringConvertible {
     }
 }
 
-// Synchonous
-print("Sync:")
-let example = Example()
-let packed = example.pack()
-print("Packed: \(packed)")
-// First way
-do {
-    let unpacked: Example = try MessagePackData(data: packed).unpack()
-    print("Unpacked: \(unpacked)")
-} catch {
-    print("Unpacking error: \(error)")
-}
-// Second way
-// let unpacked2: Result<Example, MessagePackError> = MessagePackData(data: packed).unpack()
-// switch unpacked2 {
-// case .success(let unpacked):
-//     print(unpacked)
-// case .failure(let error):
-//     print(error)
-// }
-
-func asyncUnpack() async {
+func syncPackUnpack() {
+    print("Sync:")
     let example = Example()
-    let packed = example.pack()
-    print("Packed async: \(packed)")
-    // First way
     do {
-        let unpacked: Example = try await MessagePackData(data: packed).unpack()
+        let packed = try example.pack().get()
+        print("Packed: \(packed)")
+        let unpacked: Example = try MessagePackData(data: packed).unpack().get()
+        print("Unpacked: \(unpacked)")
+    } catch {
+        print("Unpacking error: \(error)")
+    }
+}
+
+func asyncPackUnpack() async {
+    print("Async:")
+    let example = Example()
+    do {
+        let packed = try await example.pack().get()
+        print("Packed async: \(packed)")
+        let unpacked: Example = try await MessagePackData(data: packed).unpack().get()
         print("Unpacked async: \(unpacked)")
     } catch {
         print("Unpacking async error: \(error)")
     }
-    // Second way
-    // let unpacked2: Result<Example, MessagePackError> = await MessagePackData(data: packed).unpack()
-    // switch unpacked2 {
-    // case .success(let unpacked):
-    //     print(unpacked)
-    // case .failure(let error):
-    //     print(error)
-    // }
 }
 
+// Synchronous
+syncPackUnpack()
+
 // Asynchonous
-if #available(macOS 15.0, *) {
-    print("Async:")
+if #available(macOS 15.5, *) {
     Task {
-        await asyncUnpack()
+        await asyncPackUnpack()
     }
 }
 

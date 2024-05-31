@@ -111,13 +111,6 @@ extension UInt64: MessagePackable {
     }
 }
 
-@available(macOS 11, *)
-extension Float16: MessagePackable {
-    public func packValue() -> MessagePackValue {
-        return .valueWithOption(self, option: .float_32)  // MessagePack does not have float_16 type
-    }
-}
-
 extension Float32: MessagePackable {  // Float
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .float_32)
