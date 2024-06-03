@@ -31,7 +31,7 @@ public extension MessagePackableValue {
         case .valueWithOption(let value, let option):
             return packWithOption(value: value, option: option)
         case .string(let value, let encoding):
-            return packString(value: value, encoding: encoding)
+            return MessagePacker.packString(value: value, encoding: encoding)
         case .structure(let values):
             return packStructure(values: values)
         }
@@ -64,7 +64,7 @@ public extension MessagePackableValue {
         case is Float64:
             return packWithOption(value: value, option: .float_64)
         case is String:
-            return packString(value: value, encoding: .utf8)
+            return MessagePacker.packString(value: value, encoding: .utf8)
         case is Data:
             return packWithOption(value: value, option: .bin_32)
         case is Array<any MessagePackableValue>:
@@ -87,7 +87,7 @@ public extension MessagePackableValue {
         case .valueWithOption(let value, let option):
             return await packWithOption(value: value, option: option)
         case .string(let value, let encoding):
-            return packString(value: value, encoding: encoding)
+            return MessagePacker.packString(value: value, encoding: encoding)
         case .structure(let values):
             return await packStructure(values: values)
         }
@@ -121,7 +121,7 @@ public extension MessagePackableValue {
         case is Float64:
             return await packWithOption(value: value, option: .float_64)
         case is String:
-            return packString(value: value, encoding: .utf8)
+            return MessagePacker.packString(value: value, encoding: .utf8)
         case is Data:
             return await packWithOption(value: value, option: .bin_32)
         case is Array<any MessagePackableValue>:
@@ -144,7 +144,7 @@ public extension MessagePackableValue {
             guard let value = value as? any FixedWidthInteger else {
                 return .failure(.invalidData)
             }
-            let byteArray = byteArray(from: value)
+            let byteArray = MessagePacker.byteArray(from: value)
             guard let last = byteArray.last else {
                 return .failure(.invalidData)
             }
@@ -157,7 +157,7 @@ public extension MessagePackableValue {
         case .fixarray:
             break
         case .fixstr:
-            return packString(value: value, encoding: .utf8, constraint: .fixstr)
+            return MessagePacker.packString(value: value, encoding: .utf8, constraint: .fixstr)
         case .nil:
             return .success(Data([MessagePackType.nil.rawValue]))
         case .false:
@@ -173,12 +173,16 @@ public extension MessagePackableValue {
             guard let value = value as? Data else {
                 return .failure(.invalidData)
             }
-            return .success(Data([MessagePackType.bin_16.rawValue] + byteArray(from: UInt16(value.count)) + value))
+            return .success(
+                Data([MessagePackType.bin_16.rawValue] + MessagePacker.byteArray(from: UInt16(value.count)) + value)
+            )
         case .bin_32:
             guard let value = value as? Data else {
                 return .failure(.invalidData)
             }
-            return .success(Data([MessagePackType.bin_32.rawValue] + byteArray(from: UInt32(value.count)) + value))
+            return .success(
+                Data([MessagePackType.bin_32.rawValue] + MessagePacker.byteArray(from: UInt32(value.count)) + value)
+            )
         case .ext_8:
             break
         case .ext_16:
@@ -190,21 +194,21 @@ public extension MessagePackableValue {
         case .float_64:
             break
         case .uint_8:
-            return packInteger(value: value, byteAmount: 1, firstByte: MessagePackType.uint_8.rawValue)
+            return MessagePacker.packInteger(value: value, byteAmount: 1, firstByte: MessagePackType.uint_8.rawValue)
         case .uint_16:
-            return packInteger(value: value, byteAmount: 2, firstByte: MessagePackType.uint_16.rawValue)
+            return MessagePacker.packInteger(value: value, byteAmount: 2, firstByte: MessagePackType.uint_16.rawValue)
         case .uint_32:
-            return packInteger(value: value, byteAmount: 4, firstByte: MessagePackType.uint_32.rawValue)
+            return MessagePacker.packInteger(value: value, byteAmount: 4, firstByte: MessagePackType.uint_32.rawValue)
         case .uint_64:
-            return packInteger(value: value, byteAmount: 8, firstByte: MessagePackType.uint_64.rawValue)
+            return MessagePacker.packInteger(value: value, byteAmount: 8, firstByte: MessagePackType.uint_64.rawValue)
         case .int_8:
-            return packInteger(value: value, byteAmount: 1, firstByte: MessagePackType.int_8.rawValue)
+            return MessagePacker.packInteger(value: value, byteAmount: 1, firstByte: MessagePackType.int_8.rawValue)
         case .int_16:
-            return packInteger(value: value, byteAmount: 2, firstByte: MessagePackType.int_16.rawValue)
+            return MessagePacker.packInteger(value: value, byteAmount: 2, firstByte: MessagePackType.int_16.rawValue)
         case .int_32:
-            return packInteger(value: value, byteAmount: 4, firstByte: MessagePackType.int_32.rawValue)
+            return MessagePacker.packInteger(value: value, byteAmount: 4, firstByte: MessagePackType.int_32.rawValue)
         case .int_64:
-            return packInteger(value: value, byteAmount: 8, firstByte: MessagePackType.int_64.rawValue)
+            return MessagePacker.packInteger(value: value, byteAmount: 8, firstByte: MessagePackType.int_64.rawValue)
         case .fixext_1:
             break
         case .fixext_2:
@@ -216,11 +220,11 @@ public extension MessagePackableValue {
         case .fixext_16:
             break
         case .str_8:
-            return packString(value: value, encoding: .utf8, constraint: .str_8)
+            return MessagePacker.packString(value: value, encoding: .utf8, constraint: .str_8)
         case .str_16:
-            return packString(value: value, encoding: .utf8, constraint: .str_16)
+            return MessagePacker.packString(value: value, encoding: .utf8, constraint: .str_16)
         case .str_32:
-            return packString(value: value, encoding: .utf8, constraint: .str_32)
+            return MessagePacker.packString(value: value, encoding: .utf8, constraint: .str_32)
         case .array_16:
             break
         case .array_32:
@@ -233,7 +237,7 @@ public extension MessagePackableValue {
             guard let value = value as? any FixedWidthInteger else {
                 return .failure(.invalidData)
             }
-            let byteArray = byteArray(from: value)
+            let byteArray = MessagePacker.byteArray(from: value)
             guard var last = byteArray.last else {
                 return .failure(.invalidData)
             }
@@ -247,13 +251,60 @@ public extension MessagePackableValue {
         return .failure(.notImplemented)
     }
 
-    private func byteArray<T: FixedWidthInteger>(
+    @available(macOS 15.0, *)
+    private func packWithOption(
+        value: any MessagePackableValue,
+        option: MessagePackType
+    ) async -> Result<Data, MessagePackError> {
+        return .failure(.notImplemented)
+    }
+
+    private func packStructure(values: [MessagePackValue]) -> Result<Data, MessagePackError> {
+        return .failure(.notImplemented)
+    }
+
+    @available(macOS 15.0, *)
+    private func packStructure(values: [MessagePackValue]) async -> Result<Data, MessagePackError> {
+        return .failure(.notImplemented)
+    }
+}
+
+public class MessagePackData {
+
+    public var data: Data
+
+    public init(data: Data) {
+        self.data = data
+    }
+
+    public func unpack<T: MessagePackableValue>() -> Result<T, MessagePackError> {
+        return unpack(as: T.self)
+    }
+
+    public func unpack<T: MessagePackableValue>(as type: T.Type) -> Result<T, MessagePackError> {
+        return .failure(.notImplemented)
+    }
+
+    @available(macOS 15.0, *)
+    public func unpack<T: MessagePackableValue>() async -> Result<T, MessagePackError> {
+        return await unpack(as: T.self)
+    }
+
+    @available(macOS 15.0, *)
+    public func unpack<T: MessagePackableValue>(as type: T.Type) async -> Result<T, MessagePackError> {
+        return .failure(.notImplemented)
+    }
+
+}
+
+struct MessagePacker {
+    static func byteArray<T: FixedWidthInteger>(
         from value: T
     ) -> [UInt8] {
         withUnsafeBytes(of: value.bigEndian, Array.init)
     }
 
-    private func packInteger(
+    static func packInteger(
         value: any MessagePackableValue,
         byteAmount: Int,
         firstByte: UInt8
@@ -267,7 +318,39 @@ public extension MessagePackableValue {
         return .success(Data(byteArray))
     }
 
-    func packString(
+    static func constraintArray(
+        _ byteArray: inout [UInt8],
+        with byteAmount: Int
+    ) {
+        if byteArray.count < byteAmount {
+            let temp = [UInt8](repeating: 0, count: byteAmount - byteArray.count)
+            byteArray.insert(contentsOf: temp, at: 0)
+        } else if byteArray.count > byteAmount {
+            byteArray = byteArray.suffix(byteAmount)
+        }
+    }
+
+    static func packUInt8WithFixInt(
+        value: UInt8,
+        negative: Bool = false
+    ) -> Result<Data, MessagePackError> {
+        var value = value
+        var byteArray = [UInt8]()
+        if negative {
+            if value > MessagePackType.negative_fixint_max - MessagePackType.negative_fixint.rawValue {
+                value = MessagePackType.negative_fixint_max
+            }
+            byteArray.append(MessagePackType.negative_fixint.rawValue | value)
+            return .success(Data(byteArray))
+        }
+        if value > MessagePackType.positive_fixint_max {
+            value = MessagePackType.positive_fixint_max
+        }
+        byteArray.append(MessagePackType.positive_fixint.rawValue | value)
+        return .success(Data(byteArray))
+    }
+
+    static func packString(
         value: any MessagePackableValue,
         encoding: String.Encoding,
         constraint: MessagePackType? = nil
@@ -339,7 +422,7 @@ public extension MessagePackableValue {
         return .success(Data(byteArray))
     }
 
-    private func constraingStringArray(
+    static func constraingStringArray(
         _ byteArray: inout [UInt8],
         with byteAmount: Int
     ) {
@@ -347,85 +430,4 @@ public extension MessagePackableValue {
             byteArray = Array(byteArray.prefix(upTo: byteAmount))
         }
     }
-
-    private func constraintArray(
-        _ byteArray: inout [UInt8],
-        with byteAmount: Int
-    ) {
-        if byteArray.count < byteAmount {
-            let temp = [UInt8](repeating: 0, count: byteAmount - byteArray.count)
-            byteArray.insert(contentsOf: temp, at: 0)
-        } else if byteArray.count > byteAmount {
-            byteArray = byteArray.suffix(byteAmount)
-        }
-    }
-
-    func packUInt8WithFixInt(
-        value: UInt8,
-        negative: Bool = false
-    ) -> Result<Data, MessagePackError> {
-        var value = value
-        var byteArray = [UInt8]()
-        if negative {
-            if value > MessagePackType.negative_fixint_max - MessagePackType.negative_fixint.rawValue {
-                value = MessagePackType.negative_fixint_max
-            }
-            byteArray.append(MessagePackType.negative_fixint.rawValue | value)
-            return .success(Data(byteArray))
-        }
-        if value > MessagePackType.positive_fixint_max {
-            value = MessagePackType.positive_fixint_max
-        }
-        byteArray.append(MessagePackType.positive_fixint.rawValue | value)
-        return .success(Data(byteArray))
-    }
-
-    @available(macOS 15.0, *)
-    private func packWithOption(
-        value: any MessagePackableValue,
-        option: MessagePackType
-    ) async -> Result<Data, MessagePackError> {
-        return .failure(.notImplemented)
-    }
-
-    private func packStructure(values: [MessagePackValue]) -> Result<Data, MessagePackError> {
-        return .failure(.notImplemented)
-    }
-
-    @available(macOS 15.0, *)
-    private func packStructure(values: [MessagePackValue]) async -> Result<Data, MessagePackError> {
-        return .failure(.notImplemented)
-    }
-}
-
-public class MessagePackData {
-
-    public var data: Data
-
-    public init(data: Data) {
-        self.data = data
-    }
-
-    public func unpack<T: MessagePackableValue>() -> Result<T, MessagePackError> {
-        return unpack(as: T.self)
-    }
-
-    public func unpack<T: MessagePackableValue>(as type: T.Type) -> Result<T, MessagePackError> {
-        return .failure(.notImplemented)
-    }
-
-    @available(macOS 15.0, *)
-    public func unpack<T: MessagePackableValue>() async -> Result<T, MessagePackError> {
-        return await unpack(as: T.self)
-    }
-
-    @available(macOS 15.0, *)
-    public func unpack<T: MessagePackableValue>(as type: T.Type) async -> Result<T, MessagePackError> {
-        return .failure(.notImplemented)
-    }
-
-}
-
-public class MessagePacker {
-
 }

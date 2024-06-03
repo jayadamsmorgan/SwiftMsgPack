@@ -88,7 +88,7 @@ extension UInt8: MessagePackableValue {
     }
 
     public func packWithFixInt(negative: Bool = false) -> Result<Data, MessagePackError> {
-        return packUInt8WithFixInt(value: self, negative: negative)
+        return MessagePacker.packUInt8WithFixInt(value: self, negative: negative)
     }
 }
 
@@ -132,7 +132,7 @@ extension String: MessagePackableValue {
         with encoding: String.Encoding = .utf8,
         constraint: MessagePackType? = nil
     ) -> Result<Data, MessagePackError> {
-        return packString(value: self, encoding: encoding, constraint: constraint)
+        return MessagePacker.packString(value: self, encoding: encoding, constraint: constraint)
     }
 
 }
