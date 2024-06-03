@@ -360,6 +360,26 @@ public extension MessagePackableValue {
         }
     }
 
+    func packUInt8WithFixInt(
+        value: UInt8,
+        negative: Bool = false
+    ) -> Result<Data, MessagePackError> {
+        var value = value
+        var byteArray = [UInt8]()
+        if negative {
+            if value > MessagePackType.negative_fixint_max - MessagePackType.negative_fixint.rawValue {
+                value = MessagePackType.negative_fixint_max
+            }
+            byteArray.append(MessagePackType.negative_fixint.rawValue | value)
+            return .success(Data(byteArray))
+        }
+        if value > MessagePackType.positive_fixint_max {
+            value = MessagePackType.positive_fixint_max
+        }
+        byteArray.append(MessagePackType.positive_fixint.rawValue | value)
+        return .success(Data(byteArray))
+    }
+
     @available(macOS 15.0, *)
     private func packWithOption(
         value: any MessagePackableValue,

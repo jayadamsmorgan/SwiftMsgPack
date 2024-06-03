@@ -86,6 +86,10 @@ extension UInt8: MessagePackableValue {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .uint_8)
     }
+
+    public func packWithFixInt(negative: Bool = false) -> Result<Data, MessagePackError> {
+        return packUInt8WithFixInt(value: self, negative: negative)
+    }
 }
 
 extension UInt16: MessagePackableValue {
