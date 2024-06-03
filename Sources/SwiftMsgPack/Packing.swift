@@ -78,6 +78,7 @@ public extension MessagePackableValue {
         }
     }
 
+    @available(macOS 15.0, *)
     func pack() async -> Result<Data, MessagePackError> {
         let value = packValue()
         switch value {
@@ -92,6 +93,7 @@ public extension MessagePackableValue {
         }
     }
 
+    @available(macOS 15.0, *)
     private func packWithOption(value: any MessagePackableValue) async -> Result<Data, MessagePackError> {
         switch value {
         case is Int:
@@ -358,6 +360,7 @@ public extension MessagePackableValue {
         }
     }
 
+    @available(macOS 15.0, *)
     private func packWithOption(
         value: any MessagePackableValue,
         option: MessagePackType
@@ -369,6 +372,7 @@ public extension MessagePackableValue {
         return .failure(.notImplemented)
     }
 
+    @available(macOS 15.0, *)
     private func packStructure(values: [MessagePackValue]) async -> Result<Data, MessagePackError> {
         return .failure(.notImplemented)
     }
@@ -390,10 +394,12 @@ public class MessagePackData {
         return .failure(.notImplemented)
     }
 
+    @available(macOS 15.0, *)
     public func unpack<T: MessagePackableValue>() async -> Result<T, MessagePackError> {
         return await unpack(as: T.self)
     }
 
+    @available(macOS 15.0, *)
     public func unpack<T: MessagePackableValue>(as type: T.Type) async -> Result<T, MessagePackError> {
         return .failure(.notImplemented)
     }

@@ -39,6 +39,7 @@ func syncPackUnpack() {
     }
 }
 
+@available(macOS 15.0, *)
 func asyncPackUnpack() async {
     print("Async:")
     let example = Example()
