@@ -23,17 +23,6 @@ jobs:
         with:
           swift-version: "5.9.0"
 
-      - name: Install libjemalloc-dev (Ubuntu only)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt update
-          sudo apt install libjemalloc-dev -y
-
-      - name: Install libjemalloc-dev (macOS only)
-        if: matrix.os == 'macos-13'
-        run: |
-          brew install jemalloc
-
       - name: Install Dependencies
         run: |
           git clone https://github.com/cpisciotta/xcbeautify
@@ -48,12 +37,8 @@ jobs:
 
       - name: Build Project
         run: |
-          ./generate_resources
           swift build -v
 
       - name: Run Tests
         run: |
           set -o pipefail && swift test | xcbeautify --renderer github-actions
-
-      - name: Run Benchmarks
-        run: swift package benchmark
