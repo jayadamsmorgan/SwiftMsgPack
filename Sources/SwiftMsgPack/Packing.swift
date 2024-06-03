@@ -288,19 +288,19 @@ public extension MessagePackableValue {
                 byteArray.insert(MessagePackType.fixstr.rawValue | UInt8(byteArray.count), at: 0)
                 return .success(Data(byteArray))
             case .str_8:
-                constraintArray(&byteArray, with: Int(UInt8.max))
+                constraingStringArray(&byteArray, with: Int(UInt8.max))
                 byteArray.insert(MessagePackType.str_8.rawValue, at: 0)
                 byteArray.insert(UInt8(byteArray.count - 1), at: 1)
                 return .success(Data(byteArray))
             case .str_16:
-                constraintArray(&byteArray, with: Int(UInt16.max))
+                constraingStringArray(&byteArray, with: Int(UInt16.max))
                 let countBytes = withUnsafeBytes(of: UInt16(byteArray.count), Array.init)
                 byteArray.insert(MessagePackType.str_16.rawValue, at: 0)
                 byteArray.insert(UInt8(countBytes[1]), at: 1)
                 byteArray.insert(UInt8(countBytes[0]), at: 2)
                 return .success(Data(byteArray))
             case .str_32:
-                constraintArray(&byteArray, with: Int(UInt32.max))
+                constraingStringArray(&byteArray, with: Int(UInt32.max))
                 let countBytes = withUnsafeBytes(of: UInt32(byteArray.count), Array.init)
                 byteArray.insert(MessagePackType.str_32.rawValue, at: 0)
                 byteArray.insert(UInt8(countBytes[3]), at: 1)
