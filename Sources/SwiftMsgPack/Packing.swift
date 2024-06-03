@@ -157,11 +157,11 @@ public extension MessagePackableValue {
         case .fixstr:
             return packString(value: value, encoding: .utf8, constraint: .fixstr)
         case .nil:
-            break
+            return .success(Data([MessagePackType.nil.rawValue]))
         case .false:
-            break
+            return .success(Data([MessagePackType.false.rawValue]))
         case .true:
-            break
+            return .success(Data([MessagePackType.true.rawValue]))
         case .bin_8:
             guard let value = value as? Data else {
                 return .failure(.invalidData)

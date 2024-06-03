@@ -48,11 +48,7 @@ public enum MessagePackType: UInt8 {
 
 extension Int: MessagePackableValue {  // arch(32) -> Int32 : arch(64) -> Int64
     public func packValue() -> MessagePackValue {
-        #if __LP64__
         return .valueWithOption(self, option: .int_64)
-        #else
-        return .valueWithOption(self, option: .int_32)
-        #endif
     }
 }
 
@@ -82,11 +78,7 @@ extension Int64: MessagePackableValue {
 
 extension UInt: MessagePackableValue {  // arch(32) -> UInt32 : arch(64) -> UInt64
     public func packValue() -> MessagePackValue {
-        #if __LP64__
         return .valueWithOption(self, option: .uint_64)
-        #else
-        return .valueWithOption(self, option: .uint_32)
-        #endif
     }
 }
 

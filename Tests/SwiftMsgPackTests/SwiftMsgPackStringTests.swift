@@ -2,7 +2,9 @@ import XCTest
 
 @testable import SwiftMsgPack
 
-final class SwiftMsgPackTests: XCTestCase {
+final class SwiftMsgPackStringTests: XCTestCase {
+
+    // TODO: Async tests
 
     func testStringPack() {
         let emptyString = ""
