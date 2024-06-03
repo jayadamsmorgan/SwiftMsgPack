@@ -2,6 +2,9 @@ import Foundation
 import SwiftMsgPack
 
 struct Example: MessagePackable, CustomStringConvertible {
+
+    let structId: any UnsignedInteger = UInt32(123_243)
+
     var name: String = "John Doe"
     var age: Int = 42
     var data: Data = Data([0x01, 0x02, 0x03])
@@ -10,7 +13,7 @@ struct Example: MessagePackable, CustomStringConvertible {
 
     func packValue() -> MessagePackValue {
         return .structure([
-            .valueWithOption(name, option: .str_8),
+            .string(name, encoding: .utf8),
             .value(age),
             .valueWithOption(data, option: .bin_8),
             .value(array),
@@ -50,13 +53,13 @@ func asyncPackUnpack() async {
 }
 
 // Synchronous
-syncPackUnpack()
-
-// Asynchonous
-if #available(macOS 15.5, *) {
-    Task {
-        await asyncPackUnpack()
-    }
-}
-
-sleep(1)
+// syncPackUnpack()
+//
+// // Asynchonous
+// if #available(macOS 15.5, *) {
+//     Task {
+//         await asyncPackUnpack()
+//     }
+// }
+//
+// sleep(1)
