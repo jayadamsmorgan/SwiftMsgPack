@@ -1,4 +1,4 @@
-// swift-tools-version: 5.4
+// swift-tools-version: 5.8
 
 import PackageDescription
 
@@ -8,6 +8,7 @@ let package = Package(
         .executable(
             name: "Example",
             targets: ["Example"]
+
         ),
         .library(
             name: "SwiftMsgPack",
@@ -17,14 +18,23 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Example",
-            dependencies: ["SwiftMsgPack"]
+            dependencies: ["SwiftMsgPack"],
+            swiftSettings: [
+                .enableExperimentalFeature("SwiftConcurrency")
+            ]
         ),
         .target(
-            name: "SwiftMsgPack"
+            name: "SwiftMsgPack",
+            swiftSettings: [
+                .enableExperimentalFeature("SwiftConcurrency")
+            ]
         ),
         .testTarget(
             name: "SwiftMsgPackTests",
-            dependencies: ["SwiftMsgPack"]
+            dependencies: ["SwiftMsgPack"],
+            swiftSettings: [
+                .enableExperimentalFeature("SwiftConcurrency")
+            ]
         ),
     ]
 )

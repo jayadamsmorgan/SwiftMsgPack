@@ -83,55 +83,13 @@ public extension MessagePackableValue {
         let value = packValue()
         switch value {
         case .value(let value):
-            return await packWithOption(value: value)
+            return packWithOption(value: value)
         case .valueWithOption(let value, let option):
-            return await packWithOption(value: value, option: option)
+            return packWithOption(value: value, option: option)
         case .string(let value, let encoding):
             return MessagePacker.packString(value: value, encoding: encoding)
         case .structure(let values):
-            return await packStructure(values: values)
-        }
-    }
-
-    @available(macOS 15.0, *)
-    private func packWithOption(value: any MessagePackableValue) async -> Result<Data, MessagePackError> {
-        switch value {
-        case is Int:
-            return await packWithOption(value: value, option: .int_64)
-        case is Int8:
-            return await packWithOption(value: value, option: .int_8)
-        case is Int16:
-            return await packWithOption(value: value, option: .int_16)
-        case is Int32:
-            return await packWithOption(value: value, option: .int_32)
-        case is Int64:
-            return await packWithOption(value: value, option: .int_64)
-        case is UInt:
-            return await packWithOption(value: value, option: .uint_64)
-        case is UInt8:
-            return await packWithOption(value: value, option: .uint_8)
-        case is UInt16:
-            return await packWithOption(value: value, option: .uint_16)
-        case is UInt32:
-            return await packWithOption(value: value, option: .uint_32)
-        case is UInt64:
-            return await packWithOption(value: value, option: .uint_64)
-        case is Float32:
-            return await packWithOption(value: value, option: .float_32)
-        case is Float64:
-            return await packWithOption(value: value, option: .float_64)
-        case is String:
-            return MessagePacker.packString(value: value, encoding: .utf8)
-        case is Data:
-            return await packWithOption(value: value, option: .bin_32)
-        case is Array<any MessagePackableValue>:
-            return await packWithOption(value: value, option: .array_32)
-        case is Bool:
-            return await packWithOption(value: value, option: self as! Bool ? .true : .false)
-        // case is Dictionary<MesssagePackableValue, MessagePackable>: // ????
-        //     break
-        default:
-            return .failure(.unknownType)
+            return packStructure(values: values)
         }
     }
 
@@ -184,11 +142,33 @@ public extension MessagePackableValue {
                 Data([MessagePackType.bin_32.rawValue] + MessagePacker.byteArray(from: UInt32(value.count)) + value)
             )
         case .ext_8:
-            break
+            guard var value = value as? Data else {
+                return .failure(.invalidData)
+            }
+            if value.count > 255 {
+                value = value.prefix(upTo: 255)
+            }
+            return .success(Data([MessagePackType.ext_8.rawValue, UInt8(value.count)] + value))
         case .ext_16:
-            break
+            guard var value = value as? Data else {
+                return .failure(.invalidData)
+            }
+            if value.count > 65535 {
+                value = value.prefix(upTo: 65535)
+            }
+            return .success(
+                Data([MessagePackType.ext_16.rawValue] + MessagePacker.byteArray(from: UInt16(value.count)) + value)
+            )
         case .ext_32:
-            break
+            guard var value = value as? Data else {
+                return .failure(.invalidData)
+            }
+            if value.count > 4294967295 {
+                value = value.prefix(upTo: 4294967295)
+            }
+            return .success(
+                Data([MessagePackType.ext_32.rawValue] + MessagePacker.byteArray(from: UInt32(value.count)) + value)
+            )
         case .float_32:
             break
         case .float_64:
@@ -210,15 +190,44 @@ public extension MessagePackableValue {
         case .int_64:
             return MessagePacker.packInteger(value: value, byteAmount: 8, firstByte: MessagePackType.int_64.rawValue)
         case .fixext_1:
-            break
+            guard var value = value as? Data else {
+                return .failure(.invalidData)
+            }
+            if value.count > 1 {
+                value = value.prefix(upTo: 1)
+            }
+            return .success(Data([MessagePackType.fixext_1.rawValue, UInt8(value.count)] + value))
         case .fixext_2:
-            break
+            guard var value = value as? Data else {
+                return .failure(.invalidData)
+            }
+            if value.count > 2 {
+                value = value.prefix(upTo: 2)
+            }
         case .fixext_4:
-            break
+            guard var value = value as? Data else {
+                return .failure(.invalidData)
+            }
+            if value.count > 4 {
+                value = value.prefix(upTo: 4)
+            }
+            return .success(Data([MessagePackType.fixext_4.rawValue, UInt8(value.count)] + value))
         case .fixext_8:
-            break
+            guard var value = value as? Data else {
+                return .failure(.invalidData)
+            }
+            if value.count > 8 {
+                value = value.prefix(upTo: 8)
+            }
+            return .success(Data([MessagePackType.fixext_8.rawValue, UInt8(value.count)] + value))
         case .fixext_16:
-            break
+            guard var value = value as? Data else {
+                return .failure(.invalidData)
+            }
+            if value.count > 16 {
+                value = value.prefix(upTo: 16)
+            }
+            return .success(Data([MessagePackType.fixext_16.rawValue, UInt8(value.count)] + value))
         case .str_8:
             return MessagePacker.packString(value: value, encoding: .utf8, constraint: .str_8)
         case .str_16:
@@ -251,22 +260,10 @@ public extension MessagePackableValue {
         return .failure(.notImplemented)
     }
 
-    @available(macOS 15.0, *)
-    private func packWithOption(
-        value: any MessagePackableValue,
-        option: MessagePackType
-    ) async -> Result<Data, MessagePackError> {
-        return .failure(.notImplemented)
-    }
-
     private func packStructure(values: [MessagePackValue]) -> Result<Data, MessagePackError> {
         return .failure(.notImplemented)
     }
 
-    @available(macOS 15.0, *)
-    private func packStructure(values: [MessagePackValue]) async -> Result<Data, MessagePackError> {
-        return .failure(.notImplemented)
-    }
 }
 
 public class MessagePackData {

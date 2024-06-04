@@ -135,6 +135,13 @@ extension String: MessagePackableValue {
         return MessagePacker.packString(value: self, encoding: encoding, constraint: constraint)
     }
 
+    public func pack(
+        with encoding: String.Encoding = .utf8,
+        constraint: MessagePackType? = nil
+    ) async -> Result<Data, MessagePackError> {
+        return MessagePacker.packString(value: self, encoding: encoding, constraint: constraint)
+    }
+
 }
 
 extension Data: MessagePackableValue {
