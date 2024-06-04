@@ -3,8 +3,6 @@ import SwiftMsgPack
 
 struct Example: MessagePackable, CustomStringConvertible {
 
-    let structId: any UnsignedInteger = UInt32(123_243)
-
     var name: String = "John Doe"
     var age: Int = 42
     var data: Data = Data([0x01, 0x02, 0x03])
@@ -28,7 +26,7 @@ func syncPackUnpack() {
     print("Sync:")
     let example = Example()
     do {
-        let packed = try example.pack().get()
+        let packed: Data = try example.pack().get()
         print("Packed: \(packed.withUnsafeBytes(Array.init))")
         let unpacked: Example = try MessagePackData(data: packed).unpack().get()
         print("Unpacked: \(unpacked)")

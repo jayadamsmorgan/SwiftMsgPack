@@ -46,43 +46,43 @@ public enum MessagePackType: UInt8 {
     case negative_fixint = 0xe0
 }
 
-extension Int: MessagePackableValue {  // arch(32) -> Int32 : arch(64) -> Int64
+extension Int: MessagePackable {  // arch(32) -> Int32 : arch(64) -> Int64
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .int_64)
     }
 }
 
-extension Int8: MessagePackableValue {
+extension Int8: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .int_8)
     }
 }
 
-extension Int16: MessagePackableValue {
+extension Int16: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .int_16)
     }
 }
 
-extension Int32: MessagePackableValue {
+extension Int32: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .int_32)
     }
 }
 
-extension Int64: MessagePackableValue {
+extension Int64: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .int_64)
     }
 }
 
-extension UInt: MessagePackableValue {  // arch(32) -> UInt32 : arch(64) -> UInt64
+extension UInt: MessagePackable {  // arch(32) -> UInt32 : arch(64) -> UInt64
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .uint_64)
     }
 }
 
-extension UInt8: MessagePackableValue {
+extension UInt8: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .uint_8)
     }
@@ -92,37 +92,37 @@ extension UInt8: MessagePackableValue {
     }
 }
 
-extension UInt16: MessagePackableValue {
+extension UInt16: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .uint_16)
     }
 }
 
-extension UInt32: MessagePackableValue {
+extension UInt32: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .uint_32)
     }
 }
 
-extension UInt64: MessagePackableValue {
+extension UInt64: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .uint_64)
     }
 }
 
-extension Float32: MessagePackableValue {  // Float
+extension Float32: MessagePackable {  // Float
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .float_32)
     }
 }
 
-extension Float64: MessagePackableValue {  // Double, FloatLiteralType
+extension Float64: MessagePackable {  // Double, FloatLiteralType
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .float_64)
     }
 }
 
-extension String: MessagePackableValue {
+extension String: MessagePackable {
 
     public func packValue() -> MessagePackValue {
         return .string(self, encoding: .utf8)
@@ -145,25 +145,25 @@ extension String: MessagePackableValue {
 
 }
 
-extension Data: MessagePackableValue {
+extension Data: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .bin_32)
     }
 }
 
-extension Array: MessagePackableValue where Element: MessagePackableValue {
+extension Array: MessagePackable where Element: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .array_32)
     }
 }
 
-extension Bool: MessagePackableValue {
+extension Bool: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: self ? .true : .false)
     }
 }
 
-extension Dictionary: MessagePackableValue where Key: MessagePackableValue, Value: MessagePackableValue {
+extension Dictionary: MessagePackable where Key: MessagePackable, Value: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .map_32)
     }

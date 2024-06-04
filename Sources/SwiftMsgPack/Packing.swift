@@ -7,21 +7,17 @@ public enum MessagePackError: Error {
 }
 
 public enum MessagePackValue {
-    case value(any MessagePackableValue)
-    case valueWithOption(any MessagePackableValue, option: MessagePackType)
+    case value(any MessagePackable)
+    case valueWithOption(any MessagePackable, option: MessagePackType)
     case string(String, encoding: String.Encoding = .utf8)
     case structure([MessagePackValue])
 }
 
-public protocol MessagePackableValue {
+public protocol MessagePackable {
     func packValue() -> MessagePackValue
 }
 
-public protocol MessagePackable: MessagePackableValue {
-    var structId: any UnsignedInteger { get }
-}
-
-public extension MessagePackableValue {
+public extension MessagePackable {
 
     func pack() -> Result<Data, MessagePackError> {
         let value = packValue()
@@ -41,7 +37,7 @@ public extension MessagePackableValue {
         }
     }
 
-    private func pack(value: any MessagePackableValue) -> Result<Data, MessagePackError> {
+    private func pack(value: any MessagePackable) -> Result<Data, MessagePackError> {
         switch value {
         case is Int:
             return packWithOption(value: value, option: .int_64)
@@ -71,11 +67,11 @@ public extension MessagePackableValue {
             return MessagePacker.packString(value: value, encoding: .utf8)
         case is Data:
             return packWithOption(value: value, option: .bin_32)
-        case is Array<any MessagePackableValue>:
+        case is Array<any MessagePackable>:
             return MessagePacker.packArray(value: value)
         case is Bool:
             return packWithOption(value: value, option: self as! Bool ? .true : .false)
-        // case is Dictionary<MessagePackableValue, MessagePackableValue>:  // ????
+        // case is Dictionary<MessagePackable, MessagePackable>:  // ????
         //     return .failure(.notImplemented)
         default:
             return .failure(.unknownType)
@@ -98,7 +94,7 @@ public extension MessagePackableValue {
     }
 
     private func packWithOption(
-        value: any MessagePackableValue,
+        value: any MessagePackable,
         option: MessagePackType
     ) -> Result<Data, MessagePackError> {
         switch option {
@@ -300,21 +296,21 @@ public class MessagePackData {
         self.data = data
     }
 
-    public func unpack<T: MessagePackableValue>() -> Result<T, MessagePackError> {
+    public func unpack<T: MessagePackable>() -> Result<T, MessagePackError> {
         return unpack(as: T.self)
     }
 
-    public func unpack<T: MessagePackableValue>(as type: T.Type) -> Result<T, MessagePackError> {
+    public func unpack<T: MessagePackable>(as type: T.Type) -> Result<T, MessagePackError> {
         return .failure(.notImplemented)
     }
 
     @available(macOS 15.0, *)
-    public func unpack<T: MessagePackableValue>() async -> Result<T, MessagePackError> {
+    public func unpack<T: MessagePackable>() async -> Result<T, MessagePackError> {
         return await unpack(as: T.self)
     }
 
     @available(macOS 15.0, *)
-    public func unpack<T: MessagePackableValue>(as type: T.Type) async -> Result<T, MessagePackError> {
+    public func unpack<T: MessagePackable>(as type: T.Type) async -> Result<T, MessagePackError> {
         return .failure(.notImplemented)
     }
 
@@ -323,7 +319,7 @@ public class MessagePackData {
 struct MessagePacker {
 
     static func packFloat(
-        value: any MessagePackableValue,
+        value: any MessagePackable,
         constraint: MessagePackType? = nil
     ) -> Result<Data, MessagePackError> {
         guard let value = value as? any FloatingPoint else {
@@ -366,10 +362,10 @@ struct MessagePacker {
     }
 
     static func packArray(
-        value: any MessagePackableValue,
+        value: any MessagePackable,
         constraint: MessagePackType? = nil
     ) -> Result<Data, MessagePackError> {
-        guard var valueArr = value as? Array<any MessagePackableValue> else {
+        guard var valueArr = value as? Array<any MessagePackable> else {
             return .failure(.invalidData)
         }
         var arrData = Data()
@@ -434,7 +430,7 @@ struct MessagePacker {
     }
 
     static func packInteger(
-        value: any MessagePackableValue,
+        value: any MessagePackable,
         byteAmount: Int,
         firstByte: UInt8
     ) -> Result<Data, MessagePackError> {
@@ -480,7 +476,7 @@ struct MessagePacker {
     }
 
     static func packString(
-        value: any MessagePackableValue,
+        value: any MessagePackable,
         encoding: String.Encoding,
         constraint: MessagePackType? = nil
     ) -> Result<Data, MessagePackError> {
