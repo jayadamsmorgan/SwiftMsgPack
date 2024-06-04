@@ -9,7 +9,6 @@ struct Example: MessagePackable, CustomStringConvertible {
     var age: Int = 42
     var data: Data = Data([0x01, 0x02, 0x03])
     var array: [Int] = [1, 2, 3]
-    var dictionary: [String: Int] = ["one": 1, "two": 2, "three": 3]
 
     func packValue() -> MessagePackValue {
         return .structure([
@@ -17,12 +16,11 @@ struct Example: MessagePackable, CustomStringConvertible {
             .value(age),
             .valueWithOption(data, option: .bin_8),
             .value(array),
-            .valueWithOption(dictionary, option: .map_16),
         ])
     }
 
     var description: String {
-        "Example(name: \(name), age: \(age), data: \(data), array: \(array), dictionary: \(dictionary))"
+        "Example(name: \(name), age: \(age), data: \(data), array: \(array)"
     }
 }
 
@@ -31,7 +29,7 @@ func syncPackUnpack() {
     let example = Example()
     do {
         let packed = try example.pack().get()
-        print("Packed: \(packed)")
+        print("Packed: \(packed.withUnsafeBytes(Array.init))")
         let unpacked: Example = try MessagePackData(data: packed).unpack().get()
         print("Unpacked: \(unpacked)")
     } catch {
@@ -45,13 +43,15 @@ func asyncPackUnpack() async {
     let example = Example()
     do {
         let packed = try await example.pack().get()
-        print("Packed async: \(packed)")
+        print("Packed async: \(packed.withUnsafeBytes(Array.init))")
         let unpacked: Example = try await MessagePackData(data: packed).unpack().get()
         print("Unpacked async: \(unpacked)")
     } catch {
         print("Unpacking async error: \(error)")
     }
 }
+
+syncPackUnpack()
 
 // Synchronous
 // syncPackUnpack()

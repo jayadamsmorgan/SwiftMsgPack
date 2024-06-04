@@ -25,9 +25,13 @@ public extension MessagePackableValue {
 
     func pack() -> Result<Data, MessagePackError> {
         let value = packValue()
+        return pack(value: value)
+    }
+
+    private func pack(value: MessagePackValue) -> Result<Data, MessagePackError> {
         switch value {
         case .value(let value):
-            return packWithOption(value: value)
+            return pack(value: value)
         case .valueWithOption(let value, let option):
             return packWithOption(value: value, option: option)
         case .string(let value, let encoding):
@@ -37,7 +41,7 @@ public extension MessagePackableValue {
         }
     }
 
-    private func packWithOption(value: any MessagePackableValue) -> Result<Data, MessagePackError> {
+    private func pack(value: any MessagePackableValue) -> Result<Data, MessagePackError> {
         switch value {
         case is Int:
             return packWithOption(value: value, option: .int_64)
@@ -71,8 +75,8 @@ public extension MessagePackableValue {
             return MessagePacker.packArray(value: value)
         case is Bool:
             return packWithOption(value: value, option: self as! Bool ? .true : .false)
-        // case is Dictionary<MesssagePackableValue, MessagePackable>:  // ????
-        //     break
+        // case is Dictionary<MessagePackableValue, MessagePackableValue>:  // ????
+        //     return .failure(.notImplemented)
         default:
             return .failure(.unknownType)
         }
@@ -83,7 +87,7 @@ public extension MessagePackableValue {
         let value = packValue()
         switch value {
         case .value(let value):
-            return packWithOption(value: value)
+            return pack(value: value)
         case .valueWithOption(let value, let option):
             return packWithOption(value: value, option: option)
         case .string(let value, let encoding):
@@ -111,7 +115,7 @@ public extension MessagePackableValue {
             }
             return .success(Data([last]))
         case .fixmap:
-            break
+            return .failure(.notImplemented)
         case .fixarray:
             return MessagePacker.packArray(value: value, constraint: .fixarray)
         case .fixstr:
@@ -201,28 +205,41 @@ public extension MessagePackableValue {
             guard var value = value as? Data else {
                 return .failure(.invalidData)
             }
+            if value.count < 2 {
+                value = value + [0, 0]
+            }
             if value.count > 2 {
                 value = value.prefix(upTo: 2)
             }
+            return .success(Data([MessagePackType.fixext_2.rawValue] + value))
         case .fixext_4:
             guard var value = value as? Data else {
                 return .failure(.invalidData)
             }
+            if value.count < 4 {
+                value = value + Array(repeating: 0, count: 4)
+            }
             if value.count > 4 {
                 value = value.prefix(upTo: 4)
             }
-            return .success(Data([MessagePackType.fixext_4.rawValue, UInt8(value.count)] + value))
+            return .success(Data([MessagePackType.fixext_4.rawValue] + value))
         case .fixext_8:
             guard var value = value as? Data else {
                 return .failure(.invalidData)
             }
+            if value.count < 8 {
+                value = value + Array(repeating: 0, count: 8)
+            }
             if value.count > 8 {
                 value = value.prefix(upTo: 8)
             }
-            return .success(Data([MessagePackType.fixext_8.rawValue, UInt8(value.count)] + value))
+            return .success(Data([MessagePackType.fixext_8.rawValue] + value))
         case .fixext_16:
             guard var value = value as? Data else {
                 return .failure(.invalidData)
+            }
+            if value.count < 16 {
+                value = value + Array(repeating: 0, count: 16)
             }
             if value.count > 16 {
                 value = value.prefix(upTo: 16)
@@ -239,9 +256,9 @@ public extension MessagePackableValue {
         case .array_32:
             return MessagePacker.packArray(value: value, constraint: .array_32)
         case .map_16:
-            break
+            return .failure(.notImplemented)
         case .map_32:
-            break
+            return .failure(.notImplemented)
         case .negative_fixint:
             guard let value = value as? any FixedWidthInteger else {
                 return .failure(.invalidData)
@@ -257,11 +274,20 @@ public extension MessagePackableValue {
             last = last | MessagePackType.negative_fixint.rawValue
             return .success(Data([last]))
         }
-        return .failure(.notImplemented)
     }
 
     private func packStructure(values: [MessagePackValue]) -> Result<Data, MessagePackError> {
-        return .failure(.notImplemented)
+        var data = Data()
+        for value in values {
+            let result = pack(value: value)
+            switch result {
+            case .success(let valueData):
+                data = data + valueData
+            case .failure(let error):
+                return .failure(error)
+            }
+        }
+        return .success(data)
     }
 
 }
