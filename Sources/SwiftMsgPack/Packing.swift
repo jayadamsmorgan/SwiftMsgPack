@@ -68,7 +68,7 @@ public extension MessagePackableValue {
         case is Data:
             return packWithOption(value: value, option: .bin_32)
         case is Array<any MessagePackableValue>:
-            return packWithOption(value: value, option: .array_32)
+            return MessagePacker.packArray(value: value)
         case is Bool:
             return packWithOption(value: value, option: self as! Bool ? .true : .false)
         // case is Dictionary<MesssagePackableValue, MessagePackable>:  // ????
@@ -113,7 +113,7 @@ public extension MessagePackableValue {
         case .fixmap:
             break
         case .fixarray:
-            break
+            return MessagePacker.packArray(value: value, constraint: .fixarray)
         case .fixstr:
             return MessagePacker.packString(value: value, encoding: .utf8, constraint: .fixstr)
         case .nil:
@@ -170,9 +170,9 @@ public extension MessagePackableValue {
                 Data([MessagePackType.ext_32.rawValue] + MessagePacker.byteArray(from: UInt32(value.count)) + value)
             )
         case .float_32:
-            break
+            return MessagePacker.packFloat(value: value, constraint: .float_32)
         case .float_64:
-            break
+            return MessagePacker.packFloat(value: value, constraint: .float_64)
         case .uint_8:
             return MessagePacker.packInteger(value: value, byteAmount: 1, firstByte: MessagePackType.uint_8.rawValue)
         case .uint_16:
@@ -235,9 +235,9 @@ public extension MessagePackableValue {
         case .str_32:
             return MessagePacker.packString(value: value, encoding: .utf8, constraint: .str_32)
         case .array_16:
-            break
+            return MessagePacker.packArray(value: value, constraint: .array_16)
         case .array_32:
-            break
+            return MessagePacker.packArray(value: value, constraint: .array_32)
         case .map_16:
             break
         case .map_32:
@@ -295,6 +295,112 @@ public class MessagePackData {
 }
 
 struct MessagePacker {
+
+    static func packFloat(
+        value: any MessagePackableValue,
+        constraint: MessagePackType? = nil
+    ) -> Result<Data, MessagePackError> {
+        guard let value = value as? any FloatingPoint else {
+            return .failure(.invalidData)
+        }
+        var byteArray = [UInt8]()
+        if let constraint {
+            switch constraint {
+            case .float_32:
+                guard let float = value as? Float32 else {
+                    return .failure(.invalidData)
+                }
+                let floatBytes = withUnsafeBytes(of: float, Array.init)
+                byteArray.append(MessagePackType.float_32.rawValue)
+                byteArray.append(contentsOf: floatBytes)
+            case .float_64:
+                guard let double = value as? Float64 else {
+                    return .failure(.invalidData)
+                }
+                let doubleBytes = withUnsafeBytes(of: double, Array.init)
+                byteArray.append(MessagePackType.float_64.rawValue)
+                byteArray.append(contentsOf: doubleBytes)
+            default:
+                return .failure(.invalidData)
+            }
+        } else {
+            if let double = value as? Float64 {
+                let doubleBytes = withUnsafeBytes(of: double, Array.init)
+                byteArray.append(MessagePackType.float_64.rawValue)
+                byteArray.append(contentsOf: doubleBytes)
+            } else if let float = value as? Float32 {
+                let floatBytes = withUnsafeBytes(of: float, Array.init)
+                byteArray.append(MessagePackType.float_32.rawValue)
+                byteArray.append(contentsOf: floatBytes)
+            } else {
+                return .failure(.invalidData)
+            }
+        }
+        return .success(Data(byteArray))
+    }
+
+    static func packArray(
+        value: any MessagePackableValue,
+        constraint: MessagePackType? = nil
+    ) -> Result<Data, MessagePackError> {
+        guard var valueArr = value as? Array<any MessagePackableValue> else {
+            return .failure(.invalidData)
+        }
+        var arrData = Data()
+        if let constraint {
+            switch constraint {
+            case .fixarray:
+                if valueArr.count > 15 {
+                    valueArr = Array(valueArr.prefix(upTo: 15))
+                }
+                arrData.append(MessagePackType.fixarray.rawValue + UInt8(valueArr.count))
+            case .array_16:
+                if valueArr.count > UInt16.max {
+                    valueArr = Array(valueArr.prefix(upTo: Int(UInt16.max)))
+                }
+                arrData.append(MessagePackType.array_16.rawValue)
+                let count = byteArray(from: UInt16(valueArr.count))
+                arrData.append(contentsOf: count)
+            case .array_32:
+                if valueArr.count > UInt32.max {
+                    valueArr = Array(valueArr.prefix(upTo: Int(UInt32.max)))
+                }
+                arrData.append(MessagePackType.array_32.rawValue)
+                let count = byteArray(from: UInt32(valueArr.count))
+                arrData.append(contentsOf: count)
+            default:
+                return .failure(.invalidData)
+            }
+        } else {
+            if valueArr.count <= 15 {
+                arrData.append(MessagePackType.fixarray.rawValue + UInt8(valueArr.count))
+            } else if valueArr.count <= UInt16.max {
+                arrData.append(MessagePackType.array_16.rawValue)
+                let count = byteArray(from: UInt16(valueArr.count))
+                arrData.append(contentsOf: count)
+            } else if valueArr.count <= UInt32.max {
+                arrData.append(MessagePackType.array_32.rawValue)
+                let count = byteArray(from: UInt32(valueArr.count))
+                arrData.append(contentsOf: count)
+            } else {
+                arrData.append(MessagePackType.array_32.rawValue)
+                valueArr = Array(valueArr.prefix(upTo: Int(UInt32.max)))
+                let count = byteArray(from: UInt32(valueArr.count))
+                arrData.append(contentsOf: count)
+            }
+        }
+        for value in valueArr {
+            let result = value.pack()
+            switch result {
+            case .success(let data):
+                arrData = arrData + data
+            case .failure(let error):
+                return .failure(error)
+            }
+        }
+        return .success(arrData)
+    }
+
     static func byteArray<T: FixedWidthInteger>(
         from value: T
     ) -> [UInt8] {
