@@ -135,6 +135,7 @@ extension String: MessagePackableValue {
         return MessagePacker.packString(value: self, encoding: encoding, constraint: constraint)
     }
 
+    @available(macOS 15.0, *)
     public func pack(
         with encoding: String.Encoding = .utf8,
         constraint: MessagePackType? = nil
