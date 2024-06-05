@@ -4,9 +4,9 @@ public enum MessagePackType: UInt8 {
 
     public static let positive_fixint_max: UInt8 = 0x7f
     public static let negative_fixint_max: UInt8 = 0xff
-    public static let fixmap_max: UInt8 = 0xf
-    public static let fixarray_max: UInt8 = 0xf
-    public static let fixstr_max: UInt8 = 0x1f
+    public static let fixmap_max: UInt8 = fixarray.rawValue - 1
+    public static let fixarray_max: UInt8 = fixstr.rawValue - 1
+    public static let fixstr_max: UInt8 = `nil`.rawValue - 1
 
     case positive_fixint = 0x00
     case fixmap = 0x80

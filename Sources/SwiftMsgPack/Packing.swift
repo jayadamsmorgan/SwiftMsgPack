@@ -71,8 +71,8 @@ public extension MessagePackable {
             return MessagePacker.packArray(value: value)
         case is Bool:
             return packWithOption(value: value, option: self as! Bool ? .true : .false)
-        // case is Dictionary<MessagePackable, MessagePackable>:  // ????
-        //     return .failure(.notImplemented)
+        case is Dictionary<AnyHashable, any MessagePackable>:  // ????
+            return MessagePacker.packDictionary(value: value)
         default:
             return .failure(.unknownType)
         }
@@ -111,7 +111,7 @@ public extension MessagePackable {
             }
             return .success(Data([last]))
         case .fixmap:
-            return .failure(.notImplemented)
+            return MessagePacker.packDictionary(value: value, constraint: .fixmap)
         case .fixarray:
             return MessagePacker.packArray(value: value, constraint: .fixarray)
         case .fixstr:
@@ -252,9 +252,9 @@ public extension MessagePackable {
         case .array_32:
             return MessagePacker.packArray(value: value, constraint: .array_32)
         case .map_16:
-            return .failure(.notImplemented)
+            return MessagePacker.packDictionary(value: value, constraint: .map_16)
         case .map_32:
-            return .failure(.notImplemented)
+            return MessagePacker.packDictionary(value: value, constraint: .map_32)
         case .negative_fixint:
             guard let value = value as? any FixedWidthInteger else {
                 return .failure(.invalidData)
@@ -317,6 +317,73 @@ public class MessagePackData {
 }
 
 struct MessagePacker {
+
+    static func packDictionary(
+        value: any MessagePackable,
+        constraint: MessagePackType? = nil
+    ) -> Result<Data, MessagePackError> {
+        let dict = value as! Dictionary<AnyHashable, any MessagePackable>
+        guard dict.keys.allSatisfy({ $0.base is MessagePackable }) else {
+            return .failure(.invalidData)
+        }
+        var dictData = Data()
+        if let constraint {
+            switch constraint {
+            case .fixmap:
+                if dict.count > MessagePackType.fixmap_max - MessagePackType.fixmap.rawValue {
+                    return .failure(.invalidData)
+                }
+                dictData.append(MessagePackType.fixmap.rawValue + UInt8(dict.count))
+            case .map_16:
+                if dict.count > UInt16.max {
+                    return .failure(.invalidData)
+                }
+                dictData.append(MessagePackType.map_16.rawValue)
+                let count = byteArray(from: UInt16(dict.count))
+                dictData.append(contentsOf: count)
+            case .map_32:
+                if dict.count > UInt32.max {
+                    return .failure(.invalidData)
+                }
+                dictData.append(MessagePackType.map_32.rawValue)
+                let count = byteArray(from: UInt32(dict.count))
+                dictData.append(contentsOf: count)
+            default:
+                return .failure(.invalidData)
+            }
+        } else {
+            if dict.count <= 15 {
+                dictData.append(MessagePackType.fixmap.rawValue + UInt8(dict.count))
+            } else if dict.count <= UInt16.max {
+                dictData.append(MessagePackType.map_16.rawValue)
+                let count = byteArray(from: UInt16(dict.count))
+                dictData.append(contentsOf: count)
+            } else if dict.count > UInt32.max {
+                return .failure(.invalidData)
+            } else {
+                dictData.append(MessagePackType.map_32.rawValue)
+                let count = byteArray(from: UInt32(dict.count))
+                dictData.append(contentsOf: count)
+            }
+        }
+        for (key, value) in dict {
+            let keyResult = (key as! MessagePackable).pack()
+            let valueResult = value.pack()
+            switch keyResult {
+            case .success(let keyData):
+                dictData = dictData + keyData
+            case .failure(let error):
+                return .failure(error)
+            }
+            switch valueResult {
+            case .success(let valueData):
+                dictData = dictData + valueData
+            case .failure(let error):
+                return .failure(error)
+            }
+        }
+        return .success(dictData)
+    }
 
     static func packFloat(
         value: any MessagePackable,
