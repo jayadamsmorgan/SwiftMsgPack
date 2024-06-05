@@ -7,10 +7,12 @@ public enum MessagePackError: Error {
 }
 
 public enum MessagePackValue {
+    case date(Date, format: MessagePackDateFormat = .timestamp_32)
     case value(any MessagePackable)
     case valueWithOption(any MessagePackable, option: MessagePackType)
     case string(String, encoding: String.Encoding = .utf8)
     case structure([MessagePackValue])
+    case structureAsExt(id: UInt8, [MessagePackValue], constraint: MessagePackType? = nil)
 }
 
 public protocol MessagePackable {
@@ -26,6 +28,8 @@ public extension MessagePackable {
 
     private func pack(value: MessagePackValue) -> Result<Data, MessagePackError> {
         switch value {
+        case .date(let value, let format):
+            return MessagePacker.packDate(value: value, with: format)
         case .value(let value):
             return pack(value: value)
         case .valueWithOption(let value, let option):
@@ -34,6 +38,8 @@ public extension MessagePackable {
             return MessagePacker.packString(value: value, encoding: encoding)
         case .structure(let values):
             return packStructure(values: values)
+        case .structureAsExt(let id, let values, let constraint):
+            return packStructureAsExt(values: values, id: id, constraint: constraint)
         }
     }
 
@@ -71,8 +77,10 @@ public extension MessagePackable {
             return MessagePacker.packArray(value: value)
         case is Bool:
             return packWithOption(value: value, option: self as! Bool ? .true : .false)
-        case is Dictionary<AnyHashable, any MessagePackable>:  // ????
+        case is Dictionary<AnyHashable, any MessagePackable>:
             return MessagePacker.packDictionary(value: value)
+        case is Date:
+            return MessagePacker.packDate(value: value, with: .timestamp_32)
         default:
             return .failure(.unknownType)
         }
@@ -82,6 +90,8 @@ public extension MessagePackable {
     func pack() async -> Result<Data, MessagePackError> {
         let value = packValue()
         switch value {
+        case .date(let value, let format):
+            return MessagePacker.packDate(value: value, with: format)
         case .value(let value):
             return pack(value: value)
         case .valueWithOption(let value, let option):
@@ -90,6 +100,8 @@ public extension MessagePackable {
             return MessagePacker.packString(value: value, encoding: encoding)
         case .structure(let values):
             return packStructure(values: values)
+        case .structureAsExt(let id, let values, let constraint):
+            return packStructureAsExt(values: values, id: id, constraint: constraint)
         }
     }
 
@@ -272,7 +284,9 @@ public extension MessagePackable {
         }
     }
 
-    private func packStructure(values: [MessagePackValue]) -> Result<Data, MessagePackError> {
+    private func packStructure(
+        values: [MessagePackValue]
+    ) -> Result<Data, MessagePackError> {
         var data = Data()
         for value in values {
             let result = pack(value: value)
@@ -284,6 +298,68 @@ public extension MessagePackable {
             }
         }
         return .success(data)
+    }
+
+    private func packStructureAsExt(
+        values: [MessagePackValue],
+        id: UInt8,
+        constraint: MessagePackType? = nil
+    ) -> Result<Data, MessagePackError> {
+        var structData = Data()
+        let result = packStructure(values: values)
+        switch result {
+        case .success(let data):
+            structData = data
+        case .failure(let error):
+            return .failure(error)
+        }
+        if let constraint {
+            switch constraint {
+            case .ext_8:
+                if structData.count > UInt8.max {
+                    return .failure(.invalidData)
+                }
+                structData.insert(MessagePackType.ext_8.rawValue, at: 0)
+                structData.insert(UInt8(structData.count), at: 1)
+                structData.insert(id, at: 2)
+                return .success(structData)
+            case .ext_16:
+                if structData.count > UInt16.max {
+                    return .failure(.invalidData)
+                }
+                structData.insert(MessagePackType.ext_16.rawValue, at: 0)
+                structData.insert(contentsOf: MessagePacker.byteArray(from: UInt16(structData.count)), at: 1)
+                structData.insert(id, at: 3)
+                return .success(structData)
+            case .ext_32:
+                if structData.count > UInt32.max {
+                    return .failure(.invalidData)
+                }
+                structData.insert(MessagePackType.ext_32.rawValue, at: 0)
+                structData.insert(contentsOf: MessagePacker.byteArray(from: UInt32(structData.count)), at: 1)
+                structData.insert(id, at: 5)
+                return .success(structData)
+            default:
+                return .failure(.invalidData)
+            }
+        }
+        if structData.count <= UInt8.max {
+            structData.insert(MessagePackType.ext_8.rawValue, at: 0)
+            structData.insert(UInt8(structData.count), at: 1)
+            structData.insert(id, at: 2)
+            return .success(structData)
+        } else if structData.count <= UInt16.max {
+            structData.insert(MessagePackType.ext_16.rawValue, at: 0)
+            structData.insert(contentsOf: MessagePacker.byteArray(from: UInt16(structData.count)), at: 1)
+            structData.insert(id, at: 3)
+            return .success(structData)
+        } else if structData.count > UInt32.max {
+            return .failure(.invalidData)
+        }
+        structData.insert(MessagePackType.ext_32.rawValue, at: 0)
+        structData.insert(contentsOf: MessagePacker.byteArray(from: UInt32(structData.count)), at: 1)
+        structData.insert(id, at: 5)
+        return .success(structData)
     }
 
 }
@@ -317,6 +393,16 @@ public class MessagePackData {
 }
 
 struct MessagePacker {
+
+    static func packDate(
+        value: any MessagePackable,
+        with format: MessagePackDateFormat
+    ) -> Result<Data, MessagePackError> {
+        guard let value = value as? Date else {
+            return .failure(.invalidData)
+        }
+        return .failure(.notImplemented)
+    }
 
     static func packDictionary(
         value: any MessagePackable,

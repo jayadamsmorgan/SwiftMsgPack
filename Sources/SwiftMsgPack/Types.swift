@@ -147,13 +147,38 @@ extension String: MessagePackable {
 
 extension Data: MessagePackable {
     public func packValue() -> MessagePackValue {
-        return .valueWithOption(self, option: .bin_32)
+        return .value(self)
+    }
+}
+
+public enum MessagePackDateFormat {
+    case timestamp_32
+    case timestamp_64
+    case timestamp_96
+}
+
+extension Date: MessagePackable {
+
+    public func packValue() -> MessagePackValue {
+        return .date(self)
+    }
+
+    public func pack(
+        with format: MessagePackDateFormat = .timestamp_32
+    ) -> Result<Data, MessagePackError> {
+        return MessagePacker.packDate(value: self, with: format)
+    }
+
+    public func pack(
+        with format: MessagePackDateFormat = .timestamp_32
+    ) async -> Result<Data, MessagePackError> {
+        return MessagePacker.packDate(value: self, with: format)
     }
 }
 
 extension Array: MessagePackable where Element: MessagePackable {
     public func packValue() -> MessagePackValue {
-        return .valueWithOption(self, option: .array_32)
+        return .value(self)
     }
 }
 
@@ -165,6 +190,6 @@ extension Bool: MessagePackable {
 
 extension Dictionary: MessagePackable where Key: MessagePackable, Value: MessagePackable {
     public func packValue() -> MessagePackValue {
-        return .valueWithOption(self, option: .map_32)
+        return .value(self)
     }
 }
