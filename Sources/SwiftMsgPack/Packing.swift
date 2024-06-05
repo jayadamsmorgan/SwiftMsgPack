@@ -82,11 +82,11 @@ public extension MessagePackable {
         case is Date:
             return MessagePacker.packDate(value: value, with: .timestamp_32)
         default:
-            return .failure(.unknownType)
+            return pack()
         }
     }
 
-    @available(macOS 15.0, *)
+    @available(macOS 12.0, *)
     func pack() async -> Result<Data, MessagePackError> {
         let value = packValue()
         switch value {
@@ -157,16 +157,16 @@ public extension MessagePackable {
             guard var value = value as? Data else {
                 return .failure(.invalidData)
             }
-            if value.count > 255 {
-                value = value.prefix(upTo: 255)
+            if value.count > UInt8.max {
+                value = value.prefix(upTo: Int(UInt8.max))
             }
             return .success(Data([MessagePackType.ext_8.rawValue, UInt8(value.count)] + value))
         case .ext_16:
             guard var value = value as? Data else {
                 return .failure(.invalidData)
             }
-            if value.count > 65535 {
-                value = value.prefix(upTo: 65535)
+            if value.count > UInt16.max {
+                value = value.prefix(upTo: Int(UInt16.max))
             }
             return .success(
                 Data([MessagePackType.ext_16.rawValue] + MessagePacker.byteArray(from: UInt16(value.count)) + value)
@@ -175,8 +175,8 @@ public extension MessagePackable {
             guard var value = value as? Data else {
                 return .failure(.invalidData)
             }
-            if value.count > 4294967295 {
-                value = value.prefix(upTo: 4294967295)
+            if value.count > UInt32.max {
+                value = value.prefix(upTo: Int(UInt32.max))
             }
             return .success(
                 Data([MessagePackType.ext_32.rawValue] + MessagePacker.byteArray(from: UInt32(value.count)) + value)
@@ -380,12 +380,12 @@ public class MessagePackData {
         return .failure(.notImplemented)
     }
 
-    @available(macOS 15.0, *)
+    @available(macOS 12.0, *)
     public func unpack<T: MessagePackable>() async -> Result<T, MessagePackError> {
         return await unpack(as: T.self)
     }
 
-    @available(macOS 15.0, *)
+    @available(macOS 12.0, *)
     public func unpack<T: MessagePackable>(as type: T.Type) async -> Result<T, MessagePackError> {
         return .failure(.notImplemented)
     }
@@ -401,7 +401,32 @@ struct MessagePacker {
         guard let value = value as? Date else {
             return .failure(.invalidData)
         }
-        return .failure(.notImplemented)
+        var byteArray = [UInt8]()
+        let timeInterval = value.timeIntervalSince1970
+        switch format {
+        case .timestamp_32:
+            if timeInterval > Double(UInt32.max) {
+                return .failure(.invalidData)
+            }
+            let timestamp = UInt32(timeInterval)
+            byteArray =
+                [MessagePackType.fixext_4.rawValue, 0xff]
+                + MessagePacker.byteArray(from: timestamp)
+        case .timestamp_64:
+            let timestamp = UInt32(timeInterval)
+            let nanoseconds = UInt32((timeInterval - Double(timestamp)) * 1_000_000_000)
+            byteArray =
+                [MessagePackType.fixext_8.rawValue, 0xff]
+                + MessagePacker.byteArray(from: nanoseconds) + MessagePacker.byteArray(from: timestamp)
+        case .timestamp_96:
+            let timestamp = UInt64(timeInterval)
+            let nanoseconds = UInt32((timeInterval - Double(timestamp)) * 1_000_000_000)
+            byteArray =
+                [MessagePackType.ext_8.rawValue, 12, 0xff]
+                + MessagePacker.byteArray(from: nanoseconds)
+                + MessagePacker.byteArray(from: timestamp)
+        }
+        return .success(Data(byteArray))
     }
 
     static func packDictionary(
