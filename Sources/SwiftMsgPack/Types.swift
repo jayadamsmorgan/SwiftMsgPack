@@ -135,7 +135,7 @@ extension String: MessagePackable {
         return MessagePacker.packString(value: self, encoding: encoding, constraint: constraint)
     }
 
-    @available(macOS 12.0, *)
+    @available(macOS 10.15.0, iOS 15.0, *)
     public func pack(
         with encoding: String.Encoding = .utf8,
         constraint: MessagePackType? = nil
@@ -151,28 +151,9 @@ extension Data: MessagePackable {
     }
 }
 
-public enum MessagePackDateFormat {
-    case timestamp_32
-    case timestamp_64
-    case timestamp_96
-}
-
 extension Date: MessagePackable {
-
     public func packValue() -> MessagePackValue {
-        return .date(self)
-    }
-
-    public func pack(
-        with format: MessagePackDateFormat = .timestamp_32
-    ) -> Result<Data, MessagePackError> {
-        return MessagePacker.packDate(value: self, with: format)
-    }
-
-    public func pack(
-        with format: MessagePackDateFormat = .timestamp_32
-    ) async -> Result<Data, MessagePackError> {
-        return MessagePacker.packDate(value: self, with: format)
+        return .value(self)
     }
 }
 

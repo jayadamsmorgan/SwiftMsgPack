@@ -7,12 +7,11 @@ public enum MessagePackError: Error {
 }
 
 public enum MessagePackValue {
-    case date(Date, format: MessagePackDateFormat = .timestamp_32)
     case value(any MessagePackable)
     case valueWithOption(any MessagePackable, option: MessagePackType)
     case string(String, encoding: String.Encoding = .utf8)
     case structure([MessagePackValue])
-    case structureAsExt(id: UInt8, [MessagePackValue], constraint: MessagePackType? = nil)
+    case structureAsExt(id: Int8, [MessagePackValue], constraint: MessagePackType? = nil)
 }
 
 public protocol MessagePackable {
@@ -28,8 +27,6 @@ public extension MessagePackable {
 
     private func pack(value: MessagePackValue) -> Result<Data, MessagePackError> {
         switch value {
-        case .date(let value, let format):
-            return MessagePacker.packDate(value: value, with: format)
         case .value(let value):
             return pack(value: value)
         case .valueWithOption(let value, let option):
@@ -80,18 +77,16 @@ public extension MessagePackable {
         case is Dictionary<AnyHashable, any MessagePackable>:
             return MessagePacker.packDictionary(value: value)
         case is Date:
-            return MessagePacker.packDate(value: value, with: .timestamp_32)
+            return MessagePacker.packDate(value: value)
         default:
             return pack()
         }
     }
 
-    @available(macOS 12.0, *)
+    @available(macOS 10.15.0, iOS 15.0, *)
     func pack() async -> Result<Data, MessagePackError> {
         let value = packValue()
         switch value {
-        case .date(let value, let format):
-            return MessagePacker.packDate(value: value, with: format)
         case .value(let value):
             return pack(value: value)
         case .valueWithOption(let value, let option):
@@ -302,7 +297,7 @@ public extension MessagePackable {
 
     private func packStructureAsExt(
         values: [MessagePackValue],
-        id: UInt8,
+        id: Int8,
         constraint: MessagePackType? = nil
     ) -> Result<Data, MessagePackError> {
         var structData = Data()
@@ -321,7 +316,7 @@ public extension MessagePackable {
                 }
                 structData.insert(MessagePackType.ext_8.rawValue, at: 0)
                 structData.insert(UInt8(structData.count), at: 1)
-                structData.insert(id, at: 2)
+                structData.insert(UInt8(id - Int8.min), at: 2)
                 return .success(structData)
             case .ext_16:
                 if structData.count > UInt16.max {
@@ -329,7 +324,7 @@ public extension MessagePackable {
                 }
                 structData.insert(MessagePackType.ext_16.rawValue, at: 0)
                 structData.insert(contentsOf: MessagePacker.byteArray(from: UInt16(structData.count)), at: 1)
-                structData.insert(id, at: 3)
+                structData.insert(UInt8(id - Int8.min), at: 3)
                 return .success(structData)
             case .ext_32:
                 if structData.count > UInt32.max {
@@ -337,7 +332,7 @@ public extension MessagePackable {
                 }
                 structData.insert(MessagePackType.ext_32.rawValue, at: 0)
                 structData.insert(contentsOf: MessagePacker.byteArray(from: UInt32(structData.count)), at: 1)
-                structData.insert(id, at: 5)
+                structData.insert(UInt8(id - Int8.min), at: 5)
                 return .success(structData)
             default:
                 return .failure(.invalidData)
@@ -346,19 +341,19 @@ public extension MessagePackable {
         if structData.count <= UInt8.max {
             structData.insert(MessagePackType.ext_8.rawValue, at: 0)
             structData.insert(UInt8(structData.count), at: 1)
-            structData.insert(id, at: 2)
+            structData.insert(UInt8(id - Int8.min), at: 2)
             return .success(structData)
         } else if structData.count <= UInt16.max {
             structData.insert(MessagePackType.ext_16.rawValue, at: 0)
             structData.insert(contentsOf: MessagePacker.byteArray(from: UInt16(structData.count)), at: 1)
-            structData.insert(id, at: 3)
+            structData.insert(UInt8(id - Int8.min), at: 3)
             return .success(structData)
         } else if structData.count > UInt32.max {
             return .failure(.invalidData)
         }
         structData.insert(MessagePackType.ext_32.rawValue, at: 0)
         structData.insert(contentsOf: MessagePacker.byteArray(from: UInt32(structData.count)), at: 1)
-        structData.insert(id, at: 5)
+        structData.insert(UInt8(id - Int8.min), at: 5)
         return .success(structData)
     }
 
@@ -380,12 +375,12 @@ public class MessagePackData {
         return .failure(.notImplemented)
     }
 
-    @available(macOS 12.0, *)
+    @available(macOS 10.15.0, iOS 15.0, *)
     public func unpack<T: MessagePackable>() async -> Result<T, MessagePackError> {
         return await unpack(as: T.self)
     }
 
-    @available(macOS 12.0, *)
+    @available(macOS 10.15.0, iOS 15.0, *)
     public func unpack<T: MessagePackable>(as type: T.Type) async -> Result<T, MessagePackError> {
         return .failure(.notImplemented)
     }
@@ -395,38 +390,34 @@ public class MessagePackData {
 struct MessagePacker {
 
     static func packDate(
-        value: any MessagePackable,
-        with format: MessagePackDateFormat
+        value: any MessagePackable
     ) -> Result<Data, MessagePackError> {
         guard let value = value as? Date else {
             return .failure(.invalidData)
         }
         var byteArray = [UInt8]()
         let timeInterval = value.timeIntervalSince1970
-        switch format {
-        case .timestamp_32:
-            if timeInterval > Double(UInt32.max) {
-                return .failure(.invalidData)
-            }
-            let timestamp = UInt32(timeInterval)
+        let seconds = UInt64(timeInterval)
+        let nanoseconds = UInt64((timeInterval - Double(seconds)) * 1_000_000_000)
+        if (seconds >> 34) != 0 {
             byteArray =
-                [MessagePackType.fixext_4.rawValue, 0xff]
-                + MessagePacker.byteArray(from: timestamp)
-        case .timestamp_64:
-            let timestamp = UInt32(timeInterval)
-            let nanoseconds = UInt32((timeInterval - Double(timestamp)) * 1_000_000_000)
-            byteArray =
-                [MessagePackType.fixext_8.rawValue, 0xff]
-                + MessagePacker.byteArray(from: nanoseconds) + MessagePacker.byteArray(from: timestamp)
-        case .timestamp_96:
-            let timestamp = UInt64(timeInterval)
-            let nanoseconds = UInt32((timeInterval - Double(timestamp)) * 1_000_000_000)
-            byteArray =
-                [MessagePackType.ext_8.rawValue, 12, 0xff]
-                + MessagePacker.byteArray(from: nanoseconds)
-                + MessagePacker.byteArray(from: timestamp)
+                [MessagePackType.ext_8.rawValue, 12, UInt8(-1 - Int8.min)]
+                + MessagePacker.byteArray(from: UInt32(nanoseconds))
+                + MessagePacker.byteArray(from: seconds)
+            return .success(Data(byteArray))
         }
-        return .success(Data(byteArray))
+        let data: UInt64 = (nanoseconds << 34) | seconds
+        if (data & 0xffffffff00000000) == 0 {
+            byteArray =
+                [MessagePackType.fixext_4.rawValue, UInt8(-1 - Int8.min)]
+                + MessagePacker.byteArray(from: UInt32(data))
+            return .success(Data(byteArray))
+        } else {
+            byteArray =
+                [MessagePackType.fixext_8.rawValue, UInt8(-1 - Int8.min)]
+                + MessagePacker.byteArray(from: data)
+            return .success(Data(byteArray))
+        }
     }
 
     static func packDictionary(

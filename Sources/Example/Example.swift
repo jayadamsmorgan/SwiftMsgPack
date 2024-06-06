@@ -17,7 +17,7 @@ struct Example: MessagePackable, CustomStringConvertible {
             .valueWithOption(data, option: .bin_8),
             .value(array),
             .value(map),
-            .date(timestamp, format: .timestamp_64),
+            .value(timestamp),
         ])
     }
 
@@ -54,7 +54,7 @@ func syncPackUnpack() {
     }
 }
 
-@available(macOS 12.0, *)
+@available(macOS 10.15.0, iOS 15.0, *)
 func asyncPackUnpack() async {
     print("Async:")
     let example = Example()
@@ -72,7 +72,7 @@ func asyncPackUnpack() async {
 syncPackUnpack()
 
 // Asynchonous
-if #available(macOS 12.0, *) {
+if #available(macOS 10.15.0, iOS 15.0, *) {
     Task {
         await asyncPackUnpack()
     }
