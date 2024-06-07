@@ -4,6 +4,8 @@ public enum MessagePackError: Error {
     case unknownType
     case invalidData
     case notImplemented
+    case constraintOverflow
+    case invalidConstraint
 }
 
 public enum MessagePackValue {
@@ -79,7 +81,7 @@ public extension MessagePackable {
         case is Date:
             return MessagePacker.packDate(value: value)
         default:
-            return pack()
+            return .failure(.unknownType)
         }
     }
 
@@ -133,10 +135,16 @@ public extension MessagePackable {
             guard let value = value as? Data else {
                 return .failure(.invalidData)
             }
+            guard value.count <= UInt8.max else {
+                return .failure(.constraintOverflow)
+            }
             return .success(Data([MessagePackType.bin_8.rawValue, UInt8(value.count)] + value))
         case .bin_16:
             guard let value = value as? Data else {
                 return .failure(.invalidData)
+            }
+            guard value.count <= UInt16.max else {
+                return .failure(.constraintOverflow)
             }
             return .success(
                 Data([MessagePackType.bin_16.rawValue] + MessagePacker.byteArray(from: UInt16(value.count)) + value)
@@ -145,33 +153,40 @@ public extension MessagePackable {
             guard let value = value as? Data else {
                 return .failure(.invalidData)
             }
+            guard value.count <= UInt32.max else {
+                return .failure(.constraintOverflow)
+            }
             return .success(
                 Data([MessagePackType.bin_32.rawValue] + MessagePacker.byteArray(from: UInt32(value.count)) + value)
             )
         case .ext_8:
-            guard var value = value as? Data else {
+            switch value {
+            case let value as Data:
+                guard value.count <= UInt8.max else {
+                    return .failure(.constraintOverflow)
+                }
+                return .success(Data([MessagePackType.ext_8.rawValue, UInt8(value.count)] + value))
+            case let value as Date:
+                return MessagePacker.packDate(value: value, constraint: .ext_8)
+            default:
                 return .failure(.invalidData)
             }
-            if value.count > UInt8.max {
-                value = value.prefix(upTo: Int(UInt8.max))
-            }
-            return .success(Data([MessagePackType.ext_8.rawValue, UInt8(value.count)] + value))
         case .ext_16:
-            guard var value = value as? Data else {
+            guard let value = value as? Data else {
                 return .failure(.invalidData)
             }
-            if value.count > UInt16.max {
-                value = value.prefix(upTo: Int(UInt16.max))
+            guard value.count <= UInt16.max else {
+                return .failure(.constraintOverflow)
             }
             return .success(
                 Data([MessagePackType.ext_16.rawValue] + MessagePacker.byteArray(from: UInt16(value.count)) + value)
             )
         case .ext_32:
-            guard var value = value as? Data else {
+            guard let value = value as? Data else {
                 return .failure(.invalidData)
             }
-            if value.count > UInt32.max {
-                value = value.prefix(upTo: Int(UInt32.max))
+            guard value.count <= UInt32.max else {
+                return .failure(.constraintOverflow)
             }
             return .success(
                 Data([MessagePackType.ext_32.rawValue] + MessagePacker.byteArray(from: UInt32(value.count)) + value)
@@ -197,55 +212,51 @@ public extension MessagePackable {
         case .int_64:
             return MessagePacker.packInteger(value: value, byteAmount: 8, firstByte: MessagePackType.int_64.rawValue)
         case .fixext_1:
-            guard var value = value as? Data else {
+            guard let value = value as? Data else {
                 return .failure(.invalidData)
             }
-            if value.count > 1 {
-                value = value.prefix(upTo: 1)
+            guard value.count == 1 else {
+                return .failure(.constraintOverflow)
             }
             return .success(Data([MessagePackType.fixext_1.rawValue, UInt8(value.count)] + value))
         case .fixext_2:
-            guard var value = value as? Data else {
+            guard let value = value as? Data else {
                 return .failure(.invalidData)
             }
-            if value.count < 2 {
-                value = value + [0, 0]
-            }
-            if value.count > 2 {
-                value = value.prefix(upTo: 2)
+            guard value.count == 2 else {
+                return .failure(.constraintOverflow)
             }
             return .success(Data([MessagePackType.fixext_2.rawValue] + value))
         case .fixext_4:
-            guard var value = value as? Data else {
+            switch value {
+            case let value as Data:
+                guard value.count == 4 else {
+                    return .failure(.constraintOverflow)
+                }
+                return .success(Data([MessagePackType.fixext_4.rawValue] + value))
+            case let value as Date:
+                return MessagePacker.packDate(value: value, constraint: .fixext_4)
+            default:
                 return .failure(.invalidData)
             }
-            if value.count < 4 {
-                value = value + Array(repeating: 0, count: 4)
-            }
-            if value.count > 4 {
-                value = value.prefix(upTo: 4)
-            }
-            return .success(Data([MessagePackType.fixext_4.rawValue] + value))
         case .fixext_8:
-            guard var value = value as? Data else {
+            switch value {
+            case let value as Data:
+                guard value.count == 8 else {
+                    return .failure(.constraintOverflow)
+                }
+                return .success(Data([MessagePackType.fixext_8.rawValue] + value))
+            case let value as Date:
+                return MessagePacker.packDate(value: value, constraint: .fixext_8)
+            default:
                 return .failure(.invalidData)
             }
-            if value.count < 8 {
-                value = value + Array(repeating: 0, count: 8)
-            }
-            if value.count > 8 {
-                value = value.prefix(upTo: 8)
-            }
-            return .success(Data([MessagePackType.fixext_8.rawValue] + value))
         case .fixext_16:
-            guard var value = value as? Data else {
+            guard let value = value as? Data else {
                 return .failure(.invalidData)
             }
-            if value.count < 16 {
-                value = value + Array(repeating: 0, count: 16)
-            }
-            if value.count > 16 {
-                value = value.prefix(upTo: 16)
+            guard value.count == 16 else {
+                return .failure(.constraintOverflow)
             }
             return .success(Data([MessagePackType.fixext_16.rawValue, UInt8(value.count)] + value))
         case .str_8:
@@ -268,11 +279,11 @@ public extension MessagePackable {
             }
             let byteArray = MessagePacker.byteArray(from: value)
             guard var last = byteArray.last else {
-                return .failure(.invalidData)
+                return .failure(.constraintOverflow)
             }
             let valueRange = MessagePackType.negative_fixint.rawValue - MessagePackType.negative_fixint_max
             guard last <= valueRange else {
-                return .failure(.invalidData)
+                return .failure(.constraintOverflow)
             }
             last = last | MessagePackType.negative_fixint.rawValue
             return .success(Data([last]))
@@ -312,7 +323,7 @@ public extension MessagePackable {
             switch constraint {
             case .ext_8:
                 if structData.count > UInt8.max {
-                    return .failure(.invalidData)
+                    return .failure(.constraintOverflow)
                 }
                 structData.insert(MessagePackType.ext_8.rawValue, at: 0)
                 structData.insert(UInt8(structData.count), at: 1)
@@ -320,7 +331,7 @@ public extension MessagePackable {
                 return .success(structData)
             case .ext_16:
                 if structData.count > UInt16.max {
-                    return .failure(.invalidData)
+                    return .failure(.constraintOverflow)
                 }
                 structData.insert(MessagePackType.ext_16.rawValue, at: 0)
                 structData.insert(contentsOf: MessagePacker.byteArray(from: UInt16(structData.count)), at: 1)
@@ -328,14 +339,14 @@ public extension MessagePackable {
                 return .success(structData)
             case .ext_32:
                 if structData.count > UInt32.max {
-                    return .failure(.invalidData)
+                    return .failure(.constraintOverflow)
                 }
                 structData.insert(MessagePackType.ext_32.rawValue, at: 0)
                 structData.insert(contentsOf: MessagePacker.byteArray(from: UInt32(structData.count)), at: 1)
                 structData.insert(UInt8(id - Int8.min), at: 5)
                 return .success(structData)
             default:
-                return .failure(.invalidData)
+                return .failure(.invalidConstraint)
             }
         }
         if structData.count <= UInt8.max {
@@ -349,7 +360,7 @@ public extension MessagePackable {
             structData.insert(UInt8(id - Int8.min), at: 3)
             return .success(structData)
         } else if structData.count > UInt32.max {
-            return .failure(.invalidData)
+            return .failure(.constraintOverflow)
         }
         structData.insert(MessagePackType.ext_32.rawValue, at: 0)
         structData.insert(contentsOf: MessagePacker.byteArray(from: UInt32(structData.count)), at: 1)
@@ -390,7 +401,8 @@ public class MessagePackData {
 struct MessagePacker {
 
     static func packDate(
-        value: any MessagePackable
+        value: any MessagePackable,
+        constraint: MessagePackType? = nil
     ) -> Result<Data, MessagePackError> {
         guard let value = value as? Date else {
             return .failure(.invalidData)
@@ -399,7 +411,31 @@ struct MessagePacker {
         let timeInterval = value.timeIntervalSince1970
         let seconds = UInt64(timeInterval)
         let nanoseconds = UInt64((timeInterval - Double(seconds)) * 1_000_000_000)
-        if (seconds >> 34) != 0 {
+        if let constraint {
+            switch constraint {
+            case .ext_8:
+                byteArray =
+                    [MessagePackType.ext_8.rawValue, 12, UInt8(-1 - Int8.min)]
+                    + MessagePacker.byteArray(from: UInt32(nanoseconds))
+                    + MessagePacker.byteArray(from: seconds)
+                return .success(Data(byteArray))
+            case .fixext_4:
+                let data: UInt64 = (nanoseconds << 34) | seconds
+                byteArray =
+                    [MessagePackType.fixext_4.rawValue, UInt8(-1 - Int8.min)]
+                    + MessagePacker.byteArray(from: UInt32(data))
+                return .success(Data(byteArray))
+            case .fixext_8:
+                let data: UInt64 = (nanoseconds << 34) | seconds
+                byteArray =
+                    [MessagePackType.fixext_8.rawValue, UInt8(-1 - Int8.min)]
+                    + MessagePacker.byteArray(from: data)
+                return .success(Data(byteArray))
+            default:
+                return .failure(.invalidConstraint)
+            }
+        }
+        if (seconds >> 34) != 0 {  //timestamp 96
             byteArray =
                 [MessagePackType.ext_8.rawValue, 12, UInt8(-1 - Int8.min)]
                 + MessagePacker.byteArray(from: UInt32(nanoseconds))
@@ -407,12 +443,12 @@ struct MessagePacker {
             return .success(Data(byteArray))
         }
         let data: UInt64 = (nanoseconds << 34) | seconds
-        if (data & 0xffffffff00000000) == 0 {
+        if data <= UInt32.max {  // timestamp 32
             byteArray =
                 [MessagePackType.fixext_4.rawValue, UInt8(-1 - Int8.min)]
                 + MessagePacker.byteArray(from: UInt32(data))
             return .success(Data(byteArray))
-        } else {
+        } else {  // timestamp 64
             byteArray =
                 [MessagePackType.fixext_8.rawValue, UInt8(-1 - Int8.min)]
                 + MessagePacker.byteArray(from: data)
@@ -433,25 +469,25 @@ struct MessagePacker {
             switch constraint {
             case .fixmap:
                 if dict.count > MessagePackType.fixmap_max - MessagePackType.fixmap.rawValue {
-                    return .failure(.invalidData)
+                    return .failure(.constraintOverflow)
                 }
                 dictData.append(MessagePackType.fixmap.rawValue + UInt8(dict.count))
             case .map_16:
                 if dict.count > UInt16.max {
-                    return .failure(.invalidData)
+                    return .failure(.constraintOverflow)
                 }
                 dictData.append(MessagePackType.map_16.rawValue)
                 let count = byteArray(from: UInt16(dict.count))
                 dictData.append(contentsOf: count)
             case .map_32:
                 if dict.count > UInt32.max {
-                    return .failure(.invalidData)
+                    return .failure(.constraintOverflow)
                 }
                 dictData.append(MessagePackType.map_32.rawValue)
                 let count = byteArray(from: UInt32(dict.count))
                 dictData.append(contentsOf: count)
             default:
-                return .failure(.invalidData)
+                return .failure(.invalidConstraint)
             }
         } else {
             if dict.count <= 15 {
@@ -461,7 +497,7 @@ struct MessagePacker {
                 let count = byteArray(from: UInt16(dict.count))
                 dictData.append(contentsOf: count)
             } else if dict.count > UInt32.max {
-                return .failure(.invalidData)
+                return .failure(.constraintOverflow)
             } else {
                 dictData.append(MessagePackType.map_32.rawValue)
                 let count = byteArray(from: UInt32(dict.count))
@@ -534,7 +570,7 @@ struct MessagePacker {
         value: any MessagePackable,
         constraint: MessagePackType? = nil
     ) -> Result<Data, MessagePackError> {
-        guard var valueArr = value as? Array<any MessagePackable> else {
+        guard let valueArr = value as? Array<any MessagePackable> else {
             return .failure(.invalidData)
         }
         var arrData = Data()
@@ -542,19 +578,19 @@ struct MessagePacker {
             switch constraint {
             case .fixarray:
                 if valueArr.count > 15 {
-                    valueArr = Array(valueArr.prefix(upTo: 15))
+                    return .failure(.constraintOverflow)
                 }
                 arrData.append(MessagePackType.fixarray.rawValue + UInt8(valueArr.count))
             case .array_16:
                 if valueArr.count > UInt16.max {
-                    valueArr = Array(valueArr.prefix(upTo: Int(UInt16.max)))
+                    return .failure(.constraintOverflow)
                 }
                 arrData.append(MessagePackType.array_16.rawValue)
                 let count = byteArray(from: UInt16(valueArr.count))
                 arrData.append(contentsOf: count)
             case .array_32:
                 if valueArr.count > UInt32.max {
-                    valueArr = Array(valueArr.prefix(upTo: Int(UInt32.max)))
+                    return .failure(.constraintOverflow)
                 }
                 arrData.append(MessagePackType.array_32.rawValue)
                 let count = byteArray(from: UInt32(valueArr.count))
@@ -574,10 +610,7 @@ struct MessagePacker {
                 let count = byteArray(from: UInt32(valueArr.count))
                 arrData.append(contentsOf: count)
             } else {
-                arrData.append(MessagePackType.array_32.rawValue)
-                valueArr = Array(valueArr.prefix(upTo: Int(UInt32.max)))
-                let count = byteArray(from: UInt32(valueArr.count))
-                arrData.append(contentsOf: count)
+                return .failure(.constraintOverflow)
             }
         }
         for value in valueArr {
@@ -607,38 +640,30 @@ struct MessagePacker {
             return .failure(.invalidData)
         }
         var byteArray = byteArray(from: value)
-        constraintArray(&byteArray, with: byteAmount)
-        byteArray.insert(firstByte, at: 0)
-        return .success(Data(byteArray))
-    }
-
-    static func constraintArray(
-        _ byteArray: inout [UInt8],
-        with byteAmount: Int
-    ) {
         if byteArray.count < byteAmount {
             let temp = [UInt8](repeating: 0, count: byteAmount - byteArray.count)
             byteArray.insert(contentsOf: temp, at: 0)
         } else if byteArray.count > byteAmount {
-            byteArray = byteArray.suffix(byteAmount)
+            byteArray = byteArray.suffix(byteAmount)  // Not sure
         }
+        byteArray.insert(firstByte, at: 0)
+        return .success(Data(byteArray))
     }
 
     static func packUInt8WithFixInt(
         value: UInt8,
         negative: Bool = false
     ) -> Result<Data, MessagePackError> {
-        var value = value
         var byteArray = [UInt8]()
         if negative {
             if value > MessagePackType.negative_fixint_max - MessagePackType.negative_fixint.rawValue {
-                value = MessagePackType.negative_fixint_max
+                return .failure(.constraintOverflow)
             }
             byteArray.append(MessagePackType.negative_fixint.rawValue | value)
             return .success(Data(byteArray))
         }
         if value > MessagePackType.positive_fixint_max {
-            value = MessagePackType.positive_fixint_max
+            return .failure(.constraintOverflow)
         }
         byteArray.append(MessagePackType.positive_fixint.rawValue | value)
         return .success(Data(byteArray))
@@ -663,32 +688,34 @@ struct MessagePacker {
         if let constraint {
             switch constraint {
             case .fixstr:
-                constraingStringArray(&byteArray, with: 31)
+                if byteArray.count > 31 {
+                    return .failure(.constraintOverflow)
+                }
                 byteArray.insert(MessagePackType.fixstr.rawValue | UInt8(byteArray.count), at: 0)
                 return .success(Data(byteArray))
             case .str_8:
-                constraingStringArray(&byteArray, with: Int(UInt8.max))
+                if byteArray.count > UInt8.max {
+                    return .failure(.constraintOverflow)
+                }
                 byteArray.insert(MessagePackType.str_8.rawValue, at: 0)
                 byteArray.insert(UInt8(byteArray.count - 1), at: 1)
                 return .success(Data(byteArray))
             case .str_16:
-                constraingStringArray(&byteArray, with: Int(UInt16.max))
-                let countBytes = withUnsafeBytes(of: UInt16(byteArray.count), Array.init)
+                if byteArray.count > UInt16.max {
+                    return .failure(.constraintOverflow)
+                }
                 byteArray.insert(MessagePackType.str_16.rawValue, at: 0)
-                byteArray.insert(UInt8(countBytes[1]), at: 1)
-                byteArray.insert(UInt8(countBytes[0]), at: 2)
+                byteArray.insert(contentsOf: MessagePacker.byteArray(from: UInt16(byteArray.count - 1)), at: 1)
                 return .success(Data(byteArray))
             case .str_32:
-                constraingStringArray(&byteArray, with: Int(UInt32.max))
-                let countBytes = withUnsafeBytes(of: UInt32(byteArray.count), Array.init)
+                if byteArray.count > UInt32.max {
+                    return .failure(.constraintOverflow)
+                }
                 byteArray.insert(MessagePackType.str_32.rawValue, at: 0)
-                byteArray.insert(UInt8(countBytes[3]), at: 1)
-                byteArray.insert(UInt8(countBytes[2]), at: 2)
-                byteArray.insert(UInt8(countBytes[1]), at: 3)
-                byteArray.insert(UInt8(countBytes[0]), at: 4)
+                byteArray.insert(contentsOf: MessagePacker.byteArray(from: UInt32(byteArray.count - 1)), at: 1)
                 return .success(Data(byteArray))
             default:
-                return .failure(.invalidData)
+                return .failure(.invalidConstraint)
             }
         }
         if byteArray.count <= 31 {
@@ -699,29 +726,14 @@ struct MessagePacker {
             byteArray.insert(UInt8(byteArray.count - 1), at: 1)
             return .success(Data(byteArray))
         } else if byteArray.count <= UInt16.max {
-            let countBytes = withUnsafeBytes(of: UInt16(byteArray.count), Array.init)
             byteArray.insert(MessagePackType.str_16.rawValue, at: 0)
-            byteArray.insert(UInt8(countBytes[1]), at: 1)
-            byteArray.insert(UInt8(countBytes[0]), at: 2)
+            byteArray.insert(contentsOf: MessagePacker.byteArray(from: UInt16(byteArray.count - 1)), at: 1)
             return .success(Data(byteArray))
         } else if byteArray.count > UInt32.max {
-            byteArray = Array(byteArray.prefix(upTo: Int(UInt32.max)))
+            return .failure(.constraintOverflow)
         }
-        let countBytes = withUnsafeBytes(of: UInt32(byteArray.count), Array.init)
         byteArray.insert(MessagePackType.str_32.rawValue, at: 0)
-        byteArray.insert(UInt8(countBytes[3]), at: 1)
-        byteArray.insert(UInt8(countBytes[2]), at: 2)
-        byteArray.insert(UInt8(countBytes[1]), at: 3)
-        byteArray.insert(UInt8(countBytes[0]), at: 4)
+        byteArray.insert(contentsOf: MessagePacker.byteArray(from: UInt32(byteArray.count - 1)), at: 1)
         return .success(Data(byteArray))
-    }
-
-    static func constraingStringArray(
-        _ byteArray: inout [UInt8],
-        with byteAmount: Int
-    ) {
-        if byteArray.count > byteAmount {
-            byteArray = Array(byteArray.prefix(upTo: byteAmount))
-        }
     }
 }

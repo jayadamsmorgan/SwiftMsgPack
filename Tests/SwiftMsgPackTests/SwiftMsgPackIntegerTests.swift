@@ -54,11 +54,10 @@ final class SwiftMsgPackIntegerTests: XCTestCase {
         let int4: UInt8 = 253
         let packed4 = int4.packWithFixInt()
         switch packed4 {
-        case .success(let data):
-            XCTAssertEqual(data[0], MessagePackType.positive_fixint_max)
-            XCTAssertEqual(data.count, 1)
+        case .success(_):
+            XCTFail("Packed while error was expected.")
         case .failure(let error):
-            XCTFail("Packing error: \(error)")
+            XCTAssertEqual(error, .constraintOverflow)
         }
 
         let int5: UInt8 = 123

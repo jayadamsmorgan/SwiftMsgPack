@@ -53,9 +53,9 @@ final class SwiftMsgPackStringTests: XCTestCase {
         case .success(let data):
             let stringBytesToCompare: [UInt8] = string3.data(using: .utf8)!.map { UInt8($0) }
             XCTAssertEqual(data[0], MessagePackType.str_16.rawValue)
-            let bytes = withUnsafeBytes(of: stringBytesToCompare.count, Array.init)
-            XCTAssertEqual(data[1], bytes[1])
-            XCTAssertEqual(data[2], bytes[0])
+            let bytes = withUnsafeBytes(of: UInt16(stringBytesToCompare.count).bigEndian, Array.init)
+            XCTAssertEqual(data[1], bytes[0])
+            XCTAssertEqual(data[2], bytes[1])
             XCTAssertEqual(data[3...].map { UInt8($0) }, stringBytesToCompare.map { UInt8($0) })
         case .failure(let error):
             XCTFail("Packing error: \(error)")
@@ -130,15 +130,13 @@ final class SwiftMsgPackStringTests: XCTestCase {
         let packed5 = string2.pack(constraint: .fixstr)
         switch packed5 {
         case .success(let data):
-            let stringBytesToCompare: [UInt8] = Array(string2.data(using: .utf8)!.map { UInt8($0) }.prefix(upTo: 31))
-            XCTAssertEqual(data[0], MessagePackType.fixstr.rawValue + 31)
-            XCTAssertEqual(data[1...].map { UInt8($0) }, stringBytesToCompare.map { UInt8($0) })
+            XCTFail("Constraint overflow expected but got data: \(data)")
         case .failure(let error):
-            XCTFail("Packing error: \(error)")
+            XCTAssertEqual(error, .constraintOverflow)
         }
 
         let packed6 = string2.pack(constraint: .int_32)
-        XCTAssertEqual(packed6, .failure(.invalidData))
+        XCTAssertEqual(packed6, .failure(.invalidConstraint))
     }
 
     func testStringPackWithEncoding() {
