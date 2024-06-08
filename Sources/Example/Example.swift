@@ -47,7 +47,7 @@ func syncPackUnpack() {
     do {
         let packed: Data = try example.pack().get()
         print("Packed: \(packed.withUnsafeBytes(Array.init))")
-        let unpacked: [Any] = try MessagePackData(data: packed).unpack().get()
+        let unpacked: [Any?] = try MessagePackData(data: packed).unpack().get()
         print("Unpacked: \(unpacked)")
     } catch {
         print("Unpacking error: \(error)")
@@ -61,7 +61,7 @@ func asyncPackUnpack() async {
     do {
         let packed = try await example.pack().get()
         print("Packed async: \(packed.withUnsafeBytes(Array.init))")
-        let unpacked: [Any] = try await MessagePackData(data: packed).unpack().get()
+        let unpacked: [Any?] = try await MessagePackData(data: packed).unpack().get()
         print("Unpacked async: \(unpacked)")
     } catch {
         print("Unpacking async error: \(error)")
