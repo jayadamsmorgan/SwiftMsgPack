@@ -73,7 +73,7 @@ case .failure(let error):
 do {
     let packed: Data = try example.pack().get()
     print("Packed: \(packed.withUnsafeBytes(Array.init))")
-    let unpacked: Example = try MessagePackData(data: packed).unpack().get()
+    let unpacked: [Any] = try MessagePackData(data: packed).unpack().get()
     print("Unpacked: \(unpacked)")
 } catch {
     print("Unpacking error: \(error)")
