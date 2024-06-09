@@ -49,7 +49,15 @@ public class MessagePackData {
                 }
                 i = i + arrayLength
             case .fixstr:
-                break
+                let stringLength = Int(fixPayload)
+                let stringResult = unpackString(stringLength: stringLength, i: i)
+                switch stringResult {
+                case .success(let str):
+                    result.append(str)
+                case .failure(let error):
+                    return .failure(error)
+                }
+                i = i + stringLength
             case .nil:
                 result.append(nil)
             case .false:
@@ -188,11 +196,50 @@ public class MessagePackData {
             case .fixext_16:
                 break
             case .str_8:
-                break
+                guard i + 1 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                guard let stringLength: UInt8 = intFromBigEndianBytes(data[i + 1...i + 1]) else {
+                    return .failure(.unpackIntError)
+                }
+                let stringResult = unpackString(stringLength: Int(stringLength), i: i)
+                switch stringResult {
+                case .success(let str):
+                    result.append(str)
+                case .failure(let error):
+                    return .failure(error)
+                }
+                i = i + 1
             case .str_16:
-                break
+                guard i + 2 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                guard let stringLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
+                    return .failure(.unpackIntError)
+                }
+                let stringResult = unpackString(stringLength: Int(stringLength), i: i)
+                switch stringResult {
+                case .success(let str):
+                    result.append(str)
+                case .failure(let error):
+                    return .failure(error)
+                }
+                i = i + 2
             case .str_32:
-                break
+                guard i + 4 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                guard let stringLength: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
+                    return .failure(.unpackIntError)
+                }
+                let stringResult = unpackString(stringLength: Int(stringLength), i: i)
+                switch stringResult {
+                case .success(let str):
+                    result.append(str)
+                case .failure(let error):
+                    return .failure(error)
+                }
+                i = i + 4
             case .array_16:
                 guard let arrayLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
                     return .failure(.unpackIntError)
@@ -251,6 +298,21 @@ public class MessagePackData {
             i += 1
         }
         return .success(result)
+    }
+
+    private func unpackString(
+        stringLength: Int,
+        i: Int,
+        encoding: String.Encoding = .utf8
+    ) -> Result<String, MessagePackError> {
+        guard i + stringLength < data.count else {
+            return .failure(.unpackIndexOutOfBounds)
+        }
+        let strData = data[i + 1...i + stringLength]
+        guard let str = String(data: strData, encoding: encoding) else {
+            return .failure(.unpackStringError)
+        }
+        return .success(str)
     }
 
     private func intFromBigEndianBytes<T: FixedWidthInteger>(_ bytes: Data) -> T? {

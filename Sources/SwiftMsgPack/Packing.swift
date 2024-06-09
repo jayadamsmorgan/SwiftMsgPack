@@ -12,6 +12,7 @@ public enum MessagePackError: Error {
     case unpackIndexOutOfBounds
     case unpackMapCountNotEven
     case unpackMapKeyNotHashable
+    case unpackStringError
 }
 
 public enum MessagePackValue {
