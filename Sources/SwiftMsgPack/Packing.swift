@@ -49,7 +49,10 @@ public extension MessagePackable {
         }
     }
 
-    private func pack(value: any MessagePackable) -> Result<Data, MessagePackError> {
+    private func pack(value: MessagePackable?) -> Result<Data, MessagePackError> {
+        guard let value else {
+            return .success(Data([MessagePackType.nil.rawValue]))
+        }
         switch value {
         case is Int:
             return packWithOption(value: value, option: .int_64)
@@ -87,6 +90,8 @@ public extension MessagePackable {
             return MessagePacker.packDictionary(value: value)
         case is Date:
             return MessagePacker.packDate(value: value)
+        case is Ext:
+            return MessagePacker.packExt(value: value)
         default:
             return .failure(.unknownType)
         }
@@ -110,9 +115,12 @@ public extension MessagePackable {
     }
 
     private func packWithOption(
-        value: any MessagePackable,
+        value: MessagePackable?,
         option: MessagePackType
     ) -> Result<Data, MessagePackError> {
+        guard let value else {
+            return .success(Data([MessagePackType.nil.rawValue]))
+        }
         switch option {
         case .positive_fixint:
             guard let value = value as? any FixedWidthInteger else {
@@ -168,36 +176,23 @@ public extension MessagePackable {
             )
         case .ext_8:
             switch value {
-            case let value as Data:
-                guard value.count <= UInt8.max else {
-                    return .failure(.constraintOverflow)
-                }
-                return .success(Data([MessagePackType.ext_8.rawValue, UInt8(value.count)] + value))
+            case let value as Ext:
+                return MessagePacker.packExt(value: value, constraint: .ext_8)
             case let value as Date:
                 return MessagePacker.packDate(value: value, constraint: .ext_8)
             default:
                 return .failure(.invalidData)
             }
         case .ext_16:
-            guard let value = value as? Data else {
+            guard let value = value as? Ext else {
                 return .failure(.invalidData)
             }
-            guard value.count <= UInt16.max else {
-                return .failure(.constraintOverflow)
-            }
-            return .success(
-                Data([MessagePackType.ext_16.rawValue] + MessagePacker.byteArray(from: UInt16(value.count)) + value)
-            )
+            return MessagePacker.packExt(value: value, constraint: .ext_16)
         case .ext_32:
-            guard let value = value as? Data else {
+            guard let value = value as? Ext else {
                 return .failure(.invalidData)
             }
-            guard value.count <= UInt32.max else {
-                return .failure(.constraintOverflow)
-            }
-            return .success(
-                Data([MessagePackType.ext_32.rawValue] + MessagePacker.byteArray(from: UInt32(value.count)) + value)
-            )
+            return MessagePacker.packExt(value: value, constraint: .ext_32)
         case .float_32:
             return MessagePacker.packFloat(value: value, constraint: .float_32)
         case .float_64:
@@ -219,28 +214,19 @@ public extension MessagePackable {
         case .int_64:
             return MessagePacker.packInteger(value: value, byteAmount: 8, firstByte: MessagePackType.int_64.rawValue)
         case .fixext_1:
-            guard let value = value as? Data else {
+            guard let value = value as? Ext else {
                 return .failure(.invalidData)
             }
-            guard value.count == 1 else {
-                return .failure(.constraintOverflow)
-            }
-            return .success(Data([MessagePackType.fixext_1.rawValue, UInt8(value.count)] + value))
+            return MessagePacker.packExt(value: value, constraint: .fixext_1)
         case .fixext_2:
-            guard let value = value as? Data else {
+            guard let value = value as? Ext else {
                 return .failure(.invalidData)
             }
-            guard value.count == 2 else {
-                return .failure(.constraintOverflow)
-            }
-            return .success(Data([MessagePackType.fixext_2.rawValue] + value))
+            return MessagePacker.packExt(value: value, constraint: .fixext_2)
         case .fixext_4:
             switch value {
-            case let value as Data:
-                guard value.count == 4 else {
-                    return .failure(.constraintOverflow)
-                }
-                return .success(Data([MessagePackType.fixext_4.rawValue] + value))
+            case let value as Ext:
+                return MessagePacker.packExt(value: value, constraint: .fixext_4)
             case let value as Date:
                 return MessagePacker.packDate(value: value, constraint: .fixext_4)
             default:
@@ -248,24 +234,18 @@ public extension MessagePackable {
             }
         case .fixext_8:
             switch value {
-            case let value as Data:
-                guard value.count == 8 else {
-                    return .failure(.constraintOverflow)
-                }
-                return .success(Data([MessagePackType.fixext_8.rawValue] + value))
+            case let value as Ext:
+                return MessagePacker.packExt(value: value, constraint: .fixext_8)
             case let value as Date:
                 return MessagePacker.packDate(value: value, constraint: .fixext_8)
             default:
                 return .failure(.invalidData)
             }
         case .fixext_16:
-            guard let value = value as? Data else {
+            guard let value = value as? Ext else {
                 return .failure(.invalidData)
             }
-            guard value.count == 16 else {
-                return .failure(.constraintOverflow)
-            }
-            return .success(Data([MessagePackType.fixext_16.rawValue, UInt8(value.count)] + value))
+            return MessagePacker.packExt(value: value, constraint: .fixext_16)
         case .str_8:
             return MessagePacker.packString(value: value, encoding: .utf8, constraint: .str_8)
         case .str_16:
@@ -378,6 +358,92 @@ public extension MessagePackable {
 }
 
 struct MessagePacker {
+
+    static func packExt(
+        value: any MessagePackable,
+        constraint: MessagePackType? = nil
+    ) -> Result<Data, MessagePackError> {
+        guard let value = value as? Ext else {
+            return .failure(.invalidData)
+        }
+        if let constraint {
+            switch constraint {
+            case .fixext_1:
+                guard value.size == 1 else {
+                    return .failure(.constraintOverflow)
+                }
+                return .success(Data([MessagePackType.fixext_1.rawValue, value.utype]) + value.data)
+            case .fixext_2:
+                guard value.size == 2 else {
+                    return .failure(.constraintOverflow)
+                }
+                return .success(Data([MessagePackType.fixext_2.rawValue, value.utype]) + value.data)
+            case .fixext_4:
+                guard value.size == 4 else {
+                    return .failure(.constraintOverflow)
+                }
+                return .success(Data([MessagePackType.fixext_4.rawValue, value.utype]) + value.data)
+            case .fixext_8:
+                guard value.size == 8 else {
+                    return .failure(.constraintOverflow)
+                }
+                return .success(Data([MessagePackType.fixext_8.rawValue, value.utype]) + value.data)
+            case .fixext_16:
+                guard value.size == 16 else {
+                    return .failure(.constraintOverflow)
+                }
+                return .success(Data([MessagePackType.fixext_16.rawValue, value.utype]) + value.data)
+            case .ext_8:
+                guard value.size <= UInt8.max else {
+                    return .failure(.constraintOverflow)
+                }
+                return .success(Data([MessagePackType.ext_8.rawValue, UInt8(value.size), value.utype] + value.data))
+            case .ext_16:
+                guard value.size <= UInt16.max else {
+                    return .failure(.constraintOverflow)
+                }
+                let sizeBytes = MessagePacker.byteArray(from: UInt16(value.size))
+                return .success(
+                    Data([MessagePackType.ext_16.rawValue]) + Data(sizeBytes) + Data([value.utype]) + value.data
+                )
+            case .ext_32:
+                guard value.size <= UInt32.max else {
+                    return .failure(.constraintOverflow)
+                }
+                let sizeBytes = MessagePacker.byteArray(from: value.size)
+                return .success(
+                    Data([MessagePackType.ext_32.rawValue]) + Data(sizeBytes) + Data([value.utype]) + value.data
+                )
+            default:
+                return .failure(.invalidConstraint)
+            }
+        }
+        if value.size == 1 {
+            return .success(Data([MessagePackType.fixext_1.rawValue, value.utype]) + value.data)
+        } else if value.size == 2 {
+            return .success(Data([MessagePackType.fixext_2.rawValue, value.utype]) + value.data)
+        } else if value.size == 4 {
+            return .success(Data([MessagePackType.fixext_4.rawValue, value.utype]) + value.data)
+        } else if value.size == 8 {
+            return .success(Data([MessagePackType.fixext_8.rawValue, value.utype]) + value.data)
+        } else if value.size == 16 {
+            return .success(Data([MessagePackType.fixext_16.rawValue, value.utype]) + value.data)
+        } else if value.size <= UInt8.max {
+            return .success(Data([MessagePackType.ext_8.rawValue, UInt8(value.size), value.utype] + value.data))
+        } else if value.size <= UInt16.max {
+            let sizeBytes = MessagePacker.byteArray(from: UInt16(value.size))
+            return .success(
+                Data([MessagePackType.ext_16.rawValue]) + Data(sizeBytes) + Data([value.utype]) + value.data
+            )
+        } else if value.size <= UInt32.max {
+            let sizeBytes = MessagePacker.byteArray(from: value.size)
+            return .success(
+                Data([MessagePackType.ext_32.rawValue]) + Data(sizeBytes) + Data([value.utype]) + value.data
+            )
+        } else {
+            return .failure(.constraintOverflow)
+        }
+    }
 
     static func packDate(
         value: any MessagePackable,

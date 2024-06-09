@@ -174,3 +174,38 @@ extension Dictionary: MessagePackable where Key: MessagePackable, Value: Message
         return .value(self)
     }
 }
+
+extension Optional: MessagePackable where Wrapped: MessagePackable {
+    public func packValue() -> MessagePackValue {
+        switch self {
+        case .none:
+            return .value(Optional<Wrapped>.none)
+        case .some(let value):
+            return value.packValue()
+        }
+    }
+}
+
+public struct Ext: MessagePackable {
+
+    public let type: Int8
+    public let data: Data
+
+    public var size: UInt32 {
+        UInt32(data.count)
+    }
+
+    public var utype: UInt8 {
+        UInt8(type - Int8.min)
+    }
+
+    public init(type: Int8, data: Data) {
+        self.type = type
+        self.data = data
+    }
+
+    public func packValue() -> MessagePackValue {
+        return .value(self)
+    }
+
+}
