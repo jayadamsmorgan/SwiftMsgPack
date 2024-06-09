@@ -60,7 +60,9 @@ public class MessagePackData {
                 guard i + 1 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let binLength: UInt8 = intFromBigEndianBytes(data[i + 1...i + 1])
+                guard let binLength: UInt8 = intFromBigEndianBytes(data[i + 1...i + 1]) else {
+                    return .failure(.unpackIntError)
+                }
                 guard i + 1 + Int(binLength) < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
@@ -71,7 +73,9 @@ public class MessagePackData {
                 guard i + 2 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let binLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2])
+                guard let binLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
+                    return .failure(.unpackIntError)
+                }
                 guard i + 2 + Int(binLength) < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
@@ -82,7 +86,9 @@ public class MessagePackData {
                 guard i + 4 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let binLength: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4])
+                guard let binLength: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
+                    return .failure(.unpackIntError)
+                }
                 guard i + 4 + Int(binLength) < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
@@ -103,56 +109,72 @@ public class MessagePackData {
                 guard i + 1 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let value: UInt8 = intFromBigEndianBytes(data[i + 1...i + 1])
+                guard let value: UInt8 = intFromBigEndianBytes(data[i + 1...i + 1]) else {
+                    return .failure(.unpackIntError)
+                }
                 result.append(value)
                 i = i + 1
             case .uint_16:
                 guard i + 2 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let value: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2])
+                guard let value: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
+                    return .failure(.unpackIntError)
+                }
                 result.append(value)
                 i = i + 2
             case .uint_32:
                 guard i + 4 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let value: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4])
+                guard let value: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
+                    return .failure(.unpackIntError)
+                }
                 result.append(value)
                 i = i + 4
             case .uint_64:
                 guard i + 8 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let value: UInt64 = intFromBigEndianBytes(data[i + 1...i + 8])
+                guard let value: UInt64 = intFromBigEndianBytes(data[i + 1...i + 8]) else {
+                    return .failure(.unpackIntError)
+                }
                 result.append(value)
                 i = i + 8
             case .int_8:
                 guard i + 1 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let value: Int8 = intFromBigEndianBytes(data[i + 1...i + 1])
+                guard let value: Int8 = intFromBigEndianBytes(data[i + 1...i + 1]) else {
+                    return .failure(.unpackIntError)
+                }
                 result.append(value)
                 i = i + 1
             case .int_16:
                 guard i + 2 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let value: Int16 = intFromBigEndianBytes(data[i + 1...i + 2])
+                guard let value: Int16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
+                    return .failure(.unpackIntError)
+                }
                 result.append(value)
                 i = i + 2
             case .int_32:
                 guard i + 4 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let value: Int32 = intFromBigEndianBytes(data[i + 1...i + 4])
+                guard let value: Int32 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
+                    return .failure(.unpackIntError)
+                }
                 result.append(value)
                 i = i + 4
             case .int_64:
                 guard i + 8 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let value: Int64 = intFromBigEndianBytes(data[i + 1...i + 8])
+                guard let value: Int64 = intFromBigEndianBytes(data[i + 1...i + 8]) else {
+                    return .failure(.unpackIntError)
+                }
                 result.append(value)
                 i = i + 8
             case .fixext_1:
@@ -172,7 +194,9 @@ public class MessagePackData {
             case .str_32:
                 break
             case .array_16:
-                let arrayLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2])
+                guard let arrayLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
+                    return .failure(.unpackIntError)
+                }
                 let arrayResult = unpackArray(arrayLength: Int(arrayLength), i: i)
                 switch arrayResult {
                 case .success(let array):
@@ -182,7 +206,9 @@ public class MessagePackData {
                 }
                 i = i + 2
             case .array_32:
-                let arrayLength: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4])
+                guard let arrayLength: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
+                    return .failure(.unpackIntError)
+                }
                 let arrayResult = unpackArray(arrayLength: Int(arrayLength), i: i)
                 switch arrayResult {
                 case .success(let array):
@@ -192,7 +218,9 @@ public class MessagePackData {
                 }
                 i = i + 4
             case .map_16:
-                let mapLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2])
+                guard let mapLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
+                    return .failure(.unpackIntError)
+                }
                 let mapResult = unpackMap(mapLength: Int(mapLength), i: i)
                 switch mapResult {
                 case .success(let map):
@@ -205,7 +233,9 @@ public class MessagePackData {
                 guard i + 4 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let mapLength: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4])
+                guard let mapLength: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
+                    return .failure(.unpackIntError)
+                }
                 let mapResult = unpackMap(mapLength: Int(mapLength), i: i)
                 switch mapResult {
                 case .success(let map):
@@ -223,9 +253,12 @@ public class MessagePackData {
         return .success(result)
     }
 
-    private func intFromBigEndianBytes<T: FixedWidthInteger>(_ bytes: Data) -> T {
+    private func intFromBigEndianBytes<T: FixedWidthInteger>(_ bytes: Data) -> T? {
         let size = MemoryLayout<T>.size
         var value: T = 0
+        guard bytes.count == size else {
+            return nil
+        }
         var tempArray = [UInt8](repeating: 0, count: size)
         for i in 0..<size {
             tempArray[i] = bytes[bytes.startIndex + i]

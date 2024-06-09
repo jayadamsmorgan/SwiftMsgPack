@@ -7,6 +7,7 @@ public enum MessagePackError: Error {
     case constraintOverflow
     case invalidConstraint
 
+    case unpackIntError
     case unpackUnknownByte
     case unpackIndexOutOfBounds
     case unpackMapCountNotEven
