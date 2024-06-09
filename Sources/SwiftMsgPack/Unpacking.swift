@@ -104,11 +104,45 @@ public class MessagePackData {
                 result.append(binData)
                 i = i + Int(binLength) + 4
             case .ext_8:
-                break
+                guard i + 2 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                let dataLength: UInt8 = data[i + 1]
+                guard i + 2 + Int(dataLength) < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                let extData = data[i + 3...i + 2 + Int(dataLength)]
+                let type: Int8 = Int8(Int(data[i + 2]) + Int(Int8.min))
+                result.append(Ext(type: type, data: extData))
+                i = i + Int(dataLength) + 2
             case .ext_16:
-                break
+                guard i + 3 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                guard let dataLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
+                    return .failure(.unpackIntError)
+                }
+                guard i + 3 + Int(dataLength) < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                let extData = data[i + 4...i + 3 + Int(dataLength)]
+                let type: Int8 = Int8(Int(data[i + 3]) + Int(Int8.min))
+                result.append(Ext(type: type, data: extData))
+                i = i + Int(dataLength) + 3
             case .ext_32:
-                break
+                guard i + 5 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                guard let dataLength: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
+                    return .failure(.unpackIntError)
+                }
+                guard i + 5 + Int(dataLength) < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                let extData = data[i + 6...i + 5 + Int(dataLength)]
+                let type: Int8 = Int8(Int(data[i + 5]) + Int(Int8.min))
+                result.append(Ext(type: type, data: extData))
+                i = i + Int(dataLength) + 5
             case .float_32:
                 break
             case .float_64:
@@ -186,15 +220,35 @@ public class MessagePackData {
                 result.append(value)
                 i = i + 8
             case .fixext_1:
-                break
+                guard i + 2 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                let type: Int8 = Int8(Int(data[i + 1]) + Int(Int8.min))
+                result.append(Ext(type: type, data: data[i + 2...i + 2]))
             case .fixext_2:
-                break
+                guard i + 3 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                let type: Int8 = Int8(Int(data[i + 1]) + Int(Int8.min))
+                result.append(Ext(type: type, data: data[i + 2...i + 3]))
             case .fixext_4:
-                break
+                guard i + 5 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                let type: Int8 = Int8(Int(data[i + 1]) + Int(Int8.min))
+                result.append(Ext(type: type, data: data[i + 2...i + 5]))
             case .fixext_8:
-                break
+                guard i + 9 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                let type: Int8 = Int8(Int(data[i + 1]) + Int(Int8.min))
+                result.append(Ext(type: type, data: data[i + 2...i + 9]))
             case .fixext_16:
-                break
+                guard i + 17 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                let type: Int8 = Int8(Int(data[i + 1]) + Int(Int8.min))
+                result.append(Ext(type: type, data: data[i + 2...i + 17]))
             case .str_8:
                 guard i + 1 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
