@@ -74,7 +74,7 @@ public class MessagePackData {
                 guard i + 1 + Int(binLength) < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let binData = data[i + 2...i + 1 + Int(binLength)]
+                let binData = Data(data[i + 2...i + 1 + Int(binLength)])
                 result.append(binData)
                 i = i + Int(binLength) + 1
             case .bin_16:
@@ -87,7 +87,7 @@ public class MessagePackData {
                 guard i + 2 + Int(binLength) < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let binData = data[i + 3...i + 2 + Int(binLength)]
+                let binData = Data(data[i + 3...i + 2 + Int(binLength)])
                 result.append(binData)
                 i = i + Int(binLength) + 2
             case .bin_32:
@@ -100,7 +100,7 @@ public class MessagePackData {
                 guard i + 4 + Int(binLength) < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let binData = data[i + 5...i + 4 + Int(binLength)]
+                let binData = Data(data[i + 5...i + 4 + Int(binLength)])
                 result.append(binData)
                 i = i + Int(binLength) + 4
             case .ext_8:
@@ -111,9 +111,27 @@ public class MessagePackData {
                 guard i + 2 + Int(dataLength) < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let extData = data[i + 3...i + 2 + Int(dataLength)]
                 let type: Int8 = Int8(Int(data[i + 2]) + Int(Int8.min))
-                result.append(Ext(type: type, data: extData))
+                if type == -1 {
+                    guard dataLength != 0 else {
+                        return .failure(.unpackDateError)
+                    }
+                    let extData = Data(data[i + 3...i + 2 + Int(dataLength)])
+                    let unpackResult = unpackDate(bytes: Data(extData))
+                    switch unpackResult {
+                    case .success(let date):
+                        result.append(date)
+                    case .failure(let error):
+                        return .failure(error)
+                    }
+                } else {
+                    if dataLength == 0 {
+                        result.append(Ext(type: type, data: Data()))
+                    } else {
+                        let extData = Data(data[i + 3...i + 2 + Int(dataLength)])
+                        result.append(Ext(type: type, data: extData))
+                    }
+                }
                 i = i + Int(dataLength) + 2
             case .ext_16:
                 guard i + 3 < data.count else {
@@ -125,7 +143,7 @@ public class MessagePackData {
                 guard i + 3 + Int(dataLength) < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let extData = data[i + 4...i + 3 + Int(dataLength)]
+                let extData = Data(data[i + 4...i + 3 + Int(dataLength)])
                 let type: Int8 = Int8(Int(data[i + 3]) + Int(Int8.min))
                 result.append(Ext(type: type, data: extData))
                 i = i + Int(dataLength) + 3
@@ -139,7 +157,7 @@ public class MessagePackData {
                 guard i + 5 + Int(dataLength) < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                let extData = data[i + 6...i + 5 + Int(dataLength)]
+                let extData = Data(data[i + 6...i + 5 + Int(dataLength)])
                 let type: Int8 = Int8(Int(data[i + 5]) + Int(Int8.min))
                 result.append(Ext(type: type, data: extData))
                 i = i + Int(dataLength) + 5
@@ -156,7 +174,7 @@ public class MessagePackData {
                 guard i + 8 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                guard let bitPattern: UInt64 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
+                guard let bitPattern: UInt64 = intFromBigEndianBytes(data[i + 1...i + 8]) else {
                     return .failure(.unpackIntError)
                 }
                 result.append(Float64(bitPattern: bitPattern.bigEndian))
@@ -238,31 +256,56 @@ public class MessagePackData {
                     return .failure(.unpackIndexOutOfBounds)
                 }
                 let type: Int8 = Int8(Int(data[i + 1]) + Int(Int8.min))
-                result.append(Ext(type: type, data: data[i + 2...i + 2]))
+                result.append(Ext(type: type, data: Data(data[i + 2...i + 2])))
+                i = i + 2
             case .fixext_2:
                 guard i + 3 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
                 let type: Int8 = Int8(Int(data[i + 1]) + Int(Int8.min))
-                result.append(Ext(type: type, data: data[i + 2...i + 3]))
+                result.append(Ext(type: type, data: Data(data[i + 2...i + 3])))
+                i = i + 3
             case .fixext_4:
                 guard i + 5 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
                 let type: Int8 = Int8(Int(data[i + 1]) + Int(Int8.min))
-                result.append(Ext(type: type, data: data[i + 2...i + 5]))
+                if type == -1 {
+                    let unpackResult = unpackDate(bytes: Data(data[i + 2...i + 5]))
+                    switch unpackResult {
+                    case .success(let date):
+                        result.append(date)
+                    case .failure(let error):
+                        return .failure(error)
+                    }
+                } else {
+                    result.append(Ext(type: type, data: Data(data[i + 2...i + 5])))
+                }
+                i = i + 5
             case .fixext_8:
                 guard i + 9 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
                 let type: Int8 = Int8(Int(data[i + 1]) + Int(Int8.min))
-                result.append(Ext(type: type, data: data[i + 2...i + 9]))
+                if type == -1 {
+                    let unpackResult = unpackDate(bytes: Data(data[i + 2...i + 9]))
+                    switch unpackResult {
+                    case .success(let date):
+                        result.append(date)
+                    case .failure(let error):
+                        return .failure(error)
+                    }
+                } else {
+                    result.append(Ext(type: type, data: Data(data[i + 2...i + 9])))
+                }
+                i = i + 9
             case .fixext_16:
                 guard i + 17 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
                 let type: Int8 = Int8(Int(data[i + 1]) + Int(Int8.min))
-                result.append(Ext(type: type, data: data[i + 2...i + 17]))
+                result.append(Ext(type: type, data: Data(data[i + 2...i + 17])))
+                i = i + 17
             case .str_8:
                 guard i + 1 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
@@ -366,6 +409,36 @@ public class MessagePackData {
             i += 1
         }
         return .success(result)
+    }
+
+    private func unpackDate(bytes: Data) -> Result<Date, MessagePackError> {
+        if bytes.count == 4 {
+            guard let seconds: UInt32 = intFromBigEndianBytes(bytes) else {
+                return .failure(.unpackIntError)
+            }
+            return .success(Date(timeIntervalSince1970: Double(seconds)))
+        } else if bytes.count == 8 {
+            guard let payload: UInt64 = intFromBigEndianBytes(bytes) else {
+                return .failure(.unpackIntError)
+            }
+            let nanoPayload = payload.bigEndian >> 34
+            let nano = Double(nanoPayload) / 1_000_000_000
+            let secondsPayload = payload.bigEndian & 0x00000003ffffffff
+            let seconds = Double(secondsPayload)
+            let timeInterval = nano + seconds
+            return .success(Date(timeIntervalSince1970: timeInterval))
+        } else if bytes.count == 12 {
+            guard let nano: UInt32 = intFromBigEndianBytes(bytes[0...3]) else {
+                return .failure(.unpackIntError)
+            }
+            guard let seconds: UInt64 = intFromBigEndianBytes(bytes[4...11]) else {
+                return .failure(.unpackIntError)
+            }
+            let timeInterval = Double(seconds) + Double(nano) / 1_000_000_000
+            return .success(Date(timeIntervalSince1970: timeInterval))
+        } else {
+            return .failure(.unpackDateError)
+        }
     }
 
     private func unpackString(

@@ -8,6 +8,8 @@ public enum MessagePackError: Error {
     case invalidConstraint
 
     case unpackIntError
+    case unpackDateError
+    case unpackExtError
     case unpackUnknownByte
     case unpackIndexOutOfBounds
     case unpackMapCountNotEven

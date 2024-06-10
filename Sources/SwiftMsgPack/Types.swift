@@ -186,7 +186,7 @@ extension Optional: MessagePackable where Wrapped: MessagePackable {
     }
 }
 
-public struct Ext: MessagePackable {
+public struct Ext: MessagePackable, Equatable {
 
     public let type: Int8
     public let data: Data
@@ -206,6 +206,10 @@ public struct Ext: MessagePackable {
 
     public func packValue() -> MessagePackValue {
         return .value(self)
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        return lhs.type == rhs.type && lhs.data == rhs.data
     }
 
 }
