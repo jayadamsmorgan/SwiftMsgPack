@@ -144,9 +144,23 @@ public class MessagePackData {
                 result.append(Ext(type: type, data: extData))
                 i = i + Int(dataLength) + 5
             case .float_32:
-                break
+                guard i + 4 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                guard let bitPattern: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
+                    return .failure(.unpackIntError)
+                }
+                result.append(Float32(bitPattern: bitPattern.bigEndian))
+                i = i + 4
             case .float_64:
-                break
+                guard i + 8 < data.count else {
+                    return .failure(.unpackIndexOutOfBounds)
+                }
+                guard let bitPattern: UInt64 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
+                    return .failure(.unpackIntError)
+                }
+                result.append(Float64(bitPattern: bitPattern.bigEndian))
+                i = i + 8
             case .uint_8:
                 guard i + 1 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
