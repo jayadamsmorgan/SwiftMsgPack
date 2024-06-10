@@ -270,14 +270,14 @@ public class MessagePackData {
                 guard let stringLength: UInt8 = intFromBigEndianBytes(data[i + 1...i + 1]) else {
                     return .failure(.unpackIntError)
                 }
-                let stringResult = unpackString(stringLength: Int(stringLength), i: i)
+                let stringResult = unpackString(stringLength: Int(stringLength), i: i + 1)
                 switch stringResult {
                 case .success(let str):
                     result.append(str)
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + 1
+                i = i + 1 + Int(stringLength)
             case .str_16:
                 guard i + 2 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
@@ -285,14 +285,14 @@ public class MessagePackData {
                 guard let stringLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
                     return .failure(.unpackIntError)
                 }
-                let stringResult = unpackString(stringLength: Int(stringLength), i: i)
+                let stringResult = unpackString(stringLength: Int(stringLength), i: i + 2)
                 switch stringResult {
                 case .success(let str):
                     result.append(str)
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + 2
+                i = i + 2 + Int(stringLength)
             case .str_32:
                 guard i + 4 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
@@ -300,14 +300,14 @@ public class MessagePackData {
                 guard let stringLength: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
                     return .failure(.unpackIntError)
                 }
-                let stringResult = unpackString(stringLength: Int(stringLength), i: i)
+                let stringResult = unpackString(stringLength: Int(stringLength), i: i + 4)
                 switch stringResult {
                 case .success(let str):
                     result.append(str)
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + 4
+                i = i + 4 + Int(stringLength)
             case .array_16:
                 guard let arrayLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
                     return .failure(.unpackIntError)
@@ -373,6 +373,9 @@ public class MessagePackData {
         i: Int,
         encoding: String.Encoding = .utf8
     ) -> Result<String, MessagePackError> {
+        guard stringLength != 0 else {
+            return .success("")
+        }
         guard i + stringLength < data.count else {
             return .failure(.unpackIndexOutOfBounds)
         }
@@ -406,6 +409,9 @@ public class MessagePackData {
     ) -> Result<MessagePackData, MessagePackError> {
         let arrayFirstIndex = i + 1
         let arrayLastIndex = arrayFirstIndex + arrayLength
+        guard arrayFirstIndex <= arrayLastIndex else {
+            return .success(MessagePackData(data: Data()))
+        }
         guard arrayLength + i + 1 < data.count else {
             return .failure(.unpackIndexOutOfBounds)
         }

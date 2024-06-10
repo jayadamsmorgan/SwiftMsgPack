@@ -11,7 +11,7 @@ final class SwiftMsgUnpackIntegerTests: XCTestCase {
         switch unpacked {
         case .success(let unpackedData):
             guard let unpackedData = unpackedData as? [UInt8] else {
-                XCTFail("Unpacked data is not [UInt8]")
+                XCTFail("Unpacked data is not [UInt8]: \(unpackedData)")
                 return
             }
             let expected: UInt8 = 0x7e - MessagePackType.positive_fixint.rawValue
@@ -28,7 +28,7 @@ final class SwiftMsgUnpackIntegerTests: XCTestCase {
         switch unpacked {
         case .success(let unpackedData):
             guard let unpackedData = unpackedData as? [Int8] else {
-                XCTFail("Unpacked data is not [Int8]")
+                XCTFail("Unpacked data is not [Int8]: \(unpackedData)")
                 return
             }
             let expected: Int8 = Int8(bitPattern: MessagePackType.negative_fixint.rawValue) - Int8(bitPattern: 0xff)
@@ -45,7 +45,7 @@ final class SwiftMsgUnpackIntegerTests: XCTestCase {
         switch unpacked {
         case .success(let unpackedData):
             guard let unpackedData = unpackedData as? [UInt8] else {
-                XCTFail("Unpacked data is not [UInt8]")
+                XCTFail("Unpacked data is not [UInt8]: \(unpackedData)")
                 return
             }
             XCTAssertEqual(unpackedData, [UInt8(0x7f)])
@@ -61,7 +61,7 @@ final class SwiftMsgUnpackIntegerTests: XCTestCase {
         switch unpacked {
         case .success(let unpackedData):
             guard let unpackedData = unpackedData as? [Int8] else {
-                XCTFail("Unpacked data is not [Int8]")
+                XCTFail("Unpacked data is not [Int8]: \(unpackedData)")
                 return
             }
             XCTAssertEqual(unpackedData, [Int8(0x7f)])
@@ -77,7 +77,7 @@ final class SwiftMsgUnpackIntegerTests: XCTestCase {
         switch unpacked {
         case .success(let unpackedData):
             guard let unpackedData = unpackedData as? [UInt16] else {
-                XCTFail("Unpacked data is not [UInt16]")
+                XCTFail("Unpacked data is not [UInt16]: \(unpackedData)")
                 return
             }
             XCTAssertEqual(unpackedData, [0x017f])
@@ -93,7 +93,7 @@ final class SwiftMsgUnpackIntegerTests: XCTestCase {
         switch unpacked {
         case .success(let unpackedData):
             guard let unpackedData = unpackedData as? [Int16] else {
-                XCTFail("Unpacked data is not [Int16]")
+                XCTFail("Unpacked data is not [Int16]: \(unpackedData)")
                 return
             }
             XCTAssertEqual(unpackedData, [0x017f])
@@ -109,7 +109,7 @@ final class SwiftMsgUnpackIntegerTests: XCTestCase {
         switch unpacked {
         case .success(let unpackedData):
             guard let unpackedData = unpackedData as? [UInt32] else {
-                XCTFail("Unpacked data is not [UInt32]")
+                XCTFail("Unpacked data is not [UInt32]: \(unpackedData)")
                 return
             }
             XCTAssertEqual(unpackedData, [0x0100007f])
@@ -125,7 +125,7 @@ final class SwiftMsgUnpackIntegerTests: XCTestCase {
         switch unpacked {
         case .success(let unpackedData):
             guard let unpackedData = unpackedData as? [Int32] else {
-                XCTFail("Unpacked data is not [Int32]")
+                XCTFail("Unpacked data is not [Int32]: \(unpackedData)")
                 return
             }
             XCTAssertEqual(unpackedData, [0x0100007f])
@@ -141,7 +141,7 @@ final class SwiftMsgUnpackIntegerTests: XCTestCase {
         switch unpacked {
         case .success(let unpackedData):
             guard let unpackedData = unpackedData as? [UInt64] else {
-                XCTFail("Unpacked data is not [UInt64]")
+                XCTFail("Unpacked data is not [UInt64]: \(unpackedData)")
                 return
             }
             XCTAssertEqual(unpackedData, [0x010000000000007f])
@@ -157,7 +157,7 @@ final class SwiftMsgUnpackIntegerTests: XCTestCase {
         switch unpacked {
         case .success(let unpackedData):
             guard let unpackedData = unpackedData as? [Int64] else {
-                XCTFail("Unpacked data is not [Int64]")
+                XCTFail("Unpacked data is not [Int64]: \(unpackedData)")
                 return
             }
             XCTAssertEqual(unpackedData, [0x010000000000007f])
