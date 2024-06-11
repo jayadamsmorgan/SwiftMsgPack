@@ -4,22 +4,23 @@ public class MessagePackData {
 
     public var data: Data
 
+    fileprivate var i: Int = 0
+
     public init(data: Data) {
         self.data = data
     }
 
     @available(macOS 10.15.0, iOS 15.0, *)
     public func unpack() async -> Result<[Any?], MessagePackError> {
-        return unpackSync()
+        return unpack(itemAmount: nil)
     }
 
     public func unpack() -> Result<[Any?], MessagePackError> {
-        return unpackSync()
+        return unpack(itemAmount: nil)
     }
 
-    private func unpackSync() -> Result<[Any?], MessagePackError> {
+    private func unpack(itemAmount: Int? = nil) -> Result<[Any?], MessagePackError> {
         var result: [Any?] = []
-        var i = 0
         while i < data.count {
             let (firstByte, fixPayload) = handleFixValues(byte: data[i])
             guard let byte = MessagePackType(rawValue: firstByte) else {
@@ -30,7 +31,7 @@ public class MessagePackData {
                 result.append(fixPayload)
             case .fixmap:
                 let mapLength = Int(fixPayload)
-                let mapResult = unpackMap(mapLength: mapLength, i: i)
+                let mapResult = unpackMap(mapLength: mapLength)
                 switch mapResult {
                 case .success(let map):
                     result.append(map)
@@ -40,24 +41,25 @@ public class MessagePackData {
                 i = i + mapLength
             case .fixarray:
                 let arrayLength = Int(fixPayload)
-                let arrayResult = unpackArray(arrayLength: arrayLength, i: i)
+                i += 1
+                let arrayResult = unpackArray(arrayLength: arrayLength)
                 switch arrayResult {
                 case .success(let array):
                     result.append(array)
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + arrayLength
             case .fixstr:
                 let stringLength = Int(fixPayload)
-                let stringResult = unpackString(stringLength: stringLength, i: i)
+                i += 1
+                let stringResult = unpackString(stringLength: stringLength)
                 switch stringResult {
                 case .success(let str):
                     result.append(str)
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + stringLength
+                i = i + stringLength - 1
             case .nil:
                 result.append(nil)
             case .false:
@@ -310,17 +312,19 @@ public class MessagePackData {
                 guard i + 1 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
                 }
-                guard let stringLength: UInt8 = intFromBigEndianBytes(data[i + 1...i + 1]) else {
+                i += 1
+                guard let stringLength: UInt8 = intFromBigEndianBytes(data[i...i]) else {
                     return .failure(.unpackIntError)
                 }
-                let stringResult = unpackString(stringLength: Int(stringLength), i: i + 1)
+                i += 1
+                let stringResult = unpackString(stringLength: Int(stringLength))
                 switch stringResult {
                 case .success(let str):
                     result.append(str)
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + 1 + Int(stringLength)
+                i = i + Int(stringLength) - 1
             case .str_16:
                 guard i + 2 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
@@ -328,14 +332,15 @@ public class MessagePackData {
                 guard let stringLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
                     return .failure(.unpackIntError)
                 }
-                let stringResult = unpackString(stringLength: Int(stringLength), i: i + 2)
+                i += 3
+                let stringResult = unpackString(stringLength: Int(stringLength))
                 switch stringResult {
                 case .success(let str):
                     result.append(str)
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + 2 + Int(stringLength)
+                i = i + Int(stringLength) - 1
             case .str_32:
                 guard i + 4 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
@@ -343,50 +348,51 @@ public class MessagePackData {
                 guard let stringLength: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
                     return .failure(.unpackIntError)
                 }
-                let stringResult = unpackString(stringLength: Int(stringLength), i: i + 4)
+                i += 5
+                let stringResult = unpackString(stringLength: Int(stringLength))
                 switch stringResult {
                 case .success(let str):
                     result.append(str)
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + 4 + Int(stringLength)
+                i = i + Int(stringLength) - 1
             case .array_16:
                 guard let arrayLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
                     return .failure(.unpackIntError)
                 }
-                let arrayResult = unpackArray(arrayLength: Int(arrayLength), i: i)
+                i = i + 3
+                let arrayResult = unpackArray(arrayLength: Int(arrayLength))
                 switch arrayResult {
                 case .success(let array):
                     result.append(array)
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + 2
             case .array_32:
                 guard let arrayLength: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
                     return .failure(.unpackIntError)
                 }
-                let arrayResult = unpackArray(arrayLength: Int(arrayLength), i: i)
+                i = i + 5
+                let arrayResult = unpackArray(arrayLength: Int(arrayLength))
                 switch arrayResult {
                 case .success(let array):
                     result.append(array)
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + 4
             case .map_16:
                 guard let mapLength: UInt16 = intFromBigEndianBytes(data[i + 1...i + 2]) else {
                     return .failure(.unpackIntError)
                 }
-                let mapResult = unpackMap(mapLength: Int(mapLength), i: i)
+                i = i + 3
+                let mapResult = unpackMap(mapLength: Int(mapLength))
                 switch mapResult {
                 case .success(let map):
                     result.append(map)
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + 2
             case .map_32:
                 guard i + 4 < data.count else {
                     return .failure(.unpackIndexOutOfBounds)
@@ -394,21 +400,52 @@ public class MessagePackData {
                 guard let mapLength: UInt32 = intFromBigEndianBytes(data[i + 1...i + 4]) else {
                     return .failure(.unpackIntError)
                 }
-                let mapResult = unpackMap(mapLength: Int(mapLength), i: i)
+                i = i + 5
+                let mapResult = unpackMap(mapLength: Int(mapLength))
                 switch mapResult {
                 case .success(let map):
                     result.append(map)
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + 4
             case .negative_fixint:
                 let value = -Int8(fixPayload)
                 result.append(value)
             }
+            if let itemAmount = itemAmount, result.count == itemAmount {
+                return .success(result)
+            }
             i += 1
         }
+        i = 0
         return .success(result)
+    }
+
+    private func unpackMap(
+        mapLength: Int
+    ) -> Result<Dictionary<AnyHashable, Any?>, MessagePackError> {
+        let arrayResult = unpackArray(arrayLength: mapLength * 2)
+        var dict = [AnyHashable: Any?]()
+        switch arrayResult {
+        case .success(let arr):
+            for var i in 0..<arr.count {
+                guard i + 1 < arr.count else {
+                    return .failure(.unpackMapCountNotEven)
+                }
+                dict[arr[i] as! AnyHashable] = arr[i + 1]
+                i += 1
+            }
+        case .failure(let error):
+            return .failure(error)
+        }
+        return .success(dict)
+    }
+
+    private func unpackArray(arrayLength: Int) -> Result<[Any?], MessagePackError> {
+        guard arrayLength > 0 else {
+            return .success([])
+        }
+        return unpack(itemAmount: arrayLength)
     }
 
     private func unpackDate(bytes: Data) -> Result<Date, MessagePackError> {
@@ -443,16 +480,15 @@ public class MessagePackData {
 
     private func unpackString(
         stringLength: Int,
-        i: Int,
         encoding: String.Encoding = .utf8
     ) -> Result<String, MessagePackError> {
         guard stringLength != 0 else {
             return .success("")
         }
-        guard i + stringLength < data.count else {
+        guard i + stringLength <= data.count else {
             return .failure(.unpackIndexOutOfBounds)
         }
-        let strData = data[i + 1...i + stringLength]
+        let strData = Data(data[i..<i + stringLength])
         guard let str = String(data: strData, encoding: encoding) else {
             return .failure(.unpackStringError)
         }
@@ -465,83 +501,10 @@ public class MessagePackData {
         guard bytes.count == size else {
             return nil
         }
-        var tempArray = [UInt8](repeating: 0, count: size)
-        for i in 0..<size {
-            tempArray[i] = bytes[bytes.startIndex + i]
-        }
-        value = tempArray.withUnsafeBytes {
+        value = Data(bytes).withUnsafeBytes {
             $0.load(as: T.self)
         }
         return T(bigEndian: value)
-    }
-
-    private func messagePackDataFromBytes(
-        data: Data,
-        index i: Int,
-        arrayLength: Int
-    ) -> Result<MessagePackData, MessagePackError> {
-        let arrayFirstIndex = i + 1
-        let arrayLastIndex = arrayFirstIndex + arrayLength
-        guard arrayFirstIndex <= arrayLastIndex else {
-            return .success(MessagePackData(data: Data()))
-        }
-        guard arrayLength + i + 1 < data.count else {
-            return .failure(.unpackIndexOutOfBounds)
-        }
-        let arrData = data[arrayFirstIndex...arrayLastIndex]
-        return .success(MessagePackData(data: arrData))
-    }
-
-    private func unpackArray(
-        arrayLength: Int,
-        i: Int
-    ) -> Result<[Any?], MessagePackError> {
-        let msgPackDataResult = messagePackDataFromBytes(
-            data: data,
-            index: i,
-            arrayLength: arrayLength
-        )
-        switch msgPackDataResult {
-        case .success(let msgPackData):
-            return msgPackData.unpackSync()
-        case .failure(let error):
-            return .failure(error)
-        }
-    }
-
-    private func unpackMap(
-        mapLength: Int,
-        i: Int
-    ) -> Result<Dictionary<AnyHashable, Any>, MessagePackError> {
-        let msgPackDataResult = messagePackDataFromBytes(
-            data: data,
-            index: i,
-            arrayLength: mapLength * 2
-        )
-        switch msgPackDataResult {
-        case .success(let msgPackData):
-            let mapResult = msgPackData.unpackSync()
-            var map = [AnyHashable: Any]()
-            switch mapResult {
-            case .success(let array):
-                guard array.count % 2 == 0 else {
-                    return .failure(.unpackMapCountNotEven)
-                }
-                for i in stride(from: 0, to: array.count, by: 2) {
-                    let key = array[i]
-                    let value = array[i + 1]
-                    guard let key = key as? AnyHashable else {
-                        return .failure(.unpackMapKeyNotHashable)
-                    }
-                    map[key] = value
-                }
-                return .success(map)
-            case .failure(let error):
-                return .failure(error)
-            }
-        case .failure(let error):
-            return .failure(error)
-        }
     }
 
     private func handleFixValues(byte: UInt8) -> (firstByte: UInt8, fixPayload: UInt8) {
