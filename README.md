@@ -38,12 +38,14 @@ Check [Example.swift][example] for `async` implementations too!
 import Foundation
 import SwiftMsgPack
 
-struct Example: MessagePackable, CustomStringConvertible {
+struct Example: MessagePackable {
 
     var name: String = "John Doe"
     var age: Int = 42
     var data: Data = Data([0x01, 0x02, 0x03])
     var array: [Int] = [1, 2, 3]
+    var map: [String: Int] = ["a": 1, "b": 2, "c": 3]
+    var timestamp: Date = Date()
 
     func packValue() -> MessagePackValue {
         return .structure([
@@ -51,32 +53,26 @@ struct Example: MessagePackable, CustomStringConvertible {
             .value(age),
             .valueWithOption(data, option: .bin_8),
             .value(array),
+            .value(map),
+            .value(timestamp),
         ])
     }
+}
 
-    var description: String {
-        "Example(name: \(name), age: \(age), data: \(data), array: \(array)"
+@main
+public struct ExampleApp {
+
+    static func main() {
+        let example = Example()
+        do {
+            let packed: Data = try example.pack().get()
+            print("Packed:\n\(packed.withUnsafeBytes(Array.init))")
+            let unpacked: [Any?] = try MessagePackData(data: packed).unpack().get()
+            print("Unpacked:\n\(unpacked)")
+        } catch {
+            print("Unpacking error: \(error)")
+        }
     }
-}
-
-let int: Int = 123
-// Same for Int (all bits), UInt (all bits), Float(all bits), String (with encoding options), Arrays, etc
-// Dictionary is not yet supported
-let packedResult: Result<Data, MessagePackError> = int.pack()
-switch packed {
-case .success(let data):
-    print(data)
-case .failure(let error):
-    print(error)
-}
-
-do {
-    let packed: Data = try example.pack().get()
-    print("Packed: \(packed.withUnsafeBytes(Array.init))")
-    let unpacked: [Any?] = try MessagePackData(data: packed).unpack().get()
-    print("Unpacked: \(unpacked)")
-} catch {
-    print("Unpacking error: \(error)")
 }
 ```
 

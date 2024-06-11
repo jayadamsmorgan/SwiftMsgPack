@@ -1,7 +1,7 @@
 import Foundation
 import SwiftMsgPack
 
-struct Example: MessagePackable, CustomStringConvertible {
+struct Example: MessagePackable {
 
     var name: String = "John Doe"
     var age: Int = 42
@@ -35,47 +35,51 @@ struct Example: MessagePackable, CustomStringConvertible {
     //         constraint: .ext_32  // Optional
     //     )
     // }
-
-    var description: String {
-        "Example(name: \(name), age: \(age), data: \(data), array: \(array), map: \(map), timestamp: \(timestamp))"
-    }
 }
 
-func syncPackUnpack() {
-    print("Sync:")
-    let example = Example()
-    do {
-        let packed: Data = try example.pack().get()
-        print("Packed: \(packed.withUnsafeBytes(Array.init))")
-        let unpacked: [Any?] = try MessagePackData(data: packed).unpack().get()
-        print("Unpacked: \(unpacked)")
-    } catch {
-        print("Unpacking error: \(error)")
+@main
+public struct ExampleApp {
+
+    static func main() {
+        // Synchronous
+        syncPackUnpack()
+
+        // Asynchonous
+        if #available(macOS 10.15.0, iOS 15.0, *) {
+            Task {
+                await asyncPackUnpack()
+            }
+        }
+
+        sleep(1)
+    }
+
+    static func syncPackUnpack() {
+        print()
+        let example = Example()
+        do {
+            let packed: Data = try example.pack().get()
+            print("Packed:\n\(packed.withUnsafeBytes(Array.init))")
+            let unpacked: [Any?] = try MessagePackData(data: packed).unpack().get()
+            print("Unpacked:\n\(unpacked)")
+        } catch {
+            print("Unpacking error: \(error)")
+        }
+        print()
+    }
+
+    @available(macOS 10.15.0, iOS 15.0, *)
+    static func asyncPackUnpack() async {
+        print("Async:")
+        let example = Example()
+        do {
+            let packed = try await example.pack().get()
+            print("Packed async:\n\(packed.withUnsafeBytes(Array.init))")
+            let unpacked: [Any?] = try await MessagePackData(data: packed).unpack().get()
+            print("Unpacked async:\n\(unpacked)")
+        } catch {
+            print("Unpacking async error: \(error)")
+        }
+        print()
     }
 }
-
-@available(macOS 10.15.0, iOS 15.0, *)
-func asyncPackUnpack() async {
-    print("Async:")
-    let example = Example()
-    do {
-        let packed = try await example.pack().get()
-        print("Packed async: \(packed.withUnsafeBytes(Array.init))")
-        let unpacked: [Any?] = try await MessagePackData(data: packed).unpack().get()
-        print("Unpacked async: \(unpacked)")
-    } catch {
-        print("Unpacking async error: \(error)")
-    }
-}
-
-// Synchronous
-syncPackUnpack()
-
-// Asynchonous
-if #available(macOS 10.15.0, iOS 15.0, *) {
-    Task {
-        await asyncPackUnpack()
-    }
-}
-
-sleep(1)
