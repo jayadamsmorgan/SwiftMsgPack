@@ -31,6 +31,7 @@ public class MessagePackData {
                 result.append(fixPayload)
             case .fixmap:
                 let mapLength = Int(fixPayload)
+                i += 1
                 let mapResult = unpackMap(mapLength: mapLength)
                 switch mapResult {
                 case .success(let map):
@@ -38,7 +39,6 @@ public class MessagePackData {
                 case .failure(let error):
                     return .failure(error)
                 }
-                i = i + mapLength
             case .fixarray:
                 let arrayLength = Int(fixPayload)
                 i += 1
@@ -417,6 +417,9 @@ public class MessagePackData {
             }
             i += 1
         }
+        guard i == data.count else {
+            return .failure(.unpackIndexOutOfBounds)
+        }
         i = 0
         return .success(result)
     }
@@ -428,12 +431,13 @@ public class MessagePackData {
         var dict = [AnyHashable: Any?]()
         switch arrayResult {
         case .success(let arr):
-            for var i in 0..<arr.count {
-                guard i + 1 < arr.count else {
+            var x = 0
+            while x < arr.count {
+                guard x + 1 < arr.count else {
                     return .failure(.unpackMapCountNotEven)
                 }
-                dict[arr[i] as! AnyHashable] = arr[i + 1]
-                i += 1
+                dict[arr[x] as! AnyHashable] = arr[x + 1]
+                x += 2
             }
         case .failure(let error):
             return .failure(error)
