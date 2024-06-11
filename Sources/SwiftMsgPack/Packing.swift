@@ -461,22 +461,22 @@ struct MessagePacker {
         if let constraint {
             switch constraint {
             case .ext_8:
-                byteArray =
-                    [MessagePackType.ext_8.rawValue, 12, UInt8(-1 - Int8.min)]
-                    + MessagePacker.byteArray(from: UInt32(nanoseconds))
-                    + MessagePacker.byteArray(from: seconds)
-                return .success(Data(byteArray))
-            case .fixext_4:
-                let data: UInt64 = (nanoseconds << 34) | seconds
+                let data: UInt64 = ((nanoseconds << 34) | seconds).bigEndian
                 byteArray =
                     [MessagePackType.fixext_4.rawValue, UInt8(-1 - Int8.min)]
                     + MessagePacker.byteArray(from: UInt32(data))
                 return .success(Data(byteArray))
-            case .fixext_8:
+            case .fixext_4:
                 let data: UInt64 = (nanoseconds << 34) | seconds
                 byteArray =
                     [MessagePackType.fixext_8.rawValue, UInt8(-1 - Int8.min)]
                     + MessagePacker.byteArray(from: data)
+                return .success(Data(byteArray))
+            case .fixext_8:
+                byteArray =
+                    [MessagePackType.ext_8.rawValue, 12, UInt8(-1 - Int8.min)]
+                    + MessagePacker.byteArray(from: UInt32(nanoseconds))
+                    + MessagePacker.byteArray(from: seconds)
                 return .success(Data(byteArray))
             default:
                 return .failure(.invalidConstraint)
@@ -489,7 +489,7 @@ struct MessagePacker {
                 + MessagePacker.byteArray(from: seconds)
             return .success(Data(byteArray))
         }
-        let data: UInt64 = (nanoseconds << 34) | seconds
+        let data: UInt64 = ((nanoseconds << 34) | seconds).bigEndian
         if data <= UInt32.max {  // timestamp 32
             byteArray =
                 [MessagePackType.fixext_4.rawValue, UInt8(-1 - Int8.min)]
