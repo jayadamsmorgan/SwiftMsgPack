@@ -210,4 +210,23 @@ final class SwiftMsgPackStringTests: XCTestCase {
             XCTFail("Packing error: \(error)")
         }
     }
+
+    func testStringPackUnpack() {
+        let i = "Hello, World!"
+        let packResult = i.pack()
+        switch packResult {
+        case .success(let data):
+            let msgData = MessagePackData(data: data)
+            let unpackResult = msgData.unpack()
+            switch unpackResult {
+            case .success(let resultArray):
+                XCTAssertEqual(resultArray[0] as! String, "Hello, World!")
+            case .failure(let error):
+                XCTFail("Unpacking error: \(error)")
+            }
+        case .failure(let error):
+            XCTFail("Packing error: \(error)")
+        }
+
+    }
 }

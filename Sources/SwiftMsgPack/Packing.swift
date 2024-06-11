@@ -84,7 +84,7 @@ public extension MessagePackable {
         case is String:
             return MessagePacker.packString(value: value, encoding: .utf8)
         case is Data:
-            return packWithOption(value: value, option: .bin_32)
+            return MessagePacker.packBin(value: value)
         case is Array<any MessagePackable>:
             return MessagePacker.packArray(value: value)
         case is Bool:
@@ -361,6 +361,25 @@ public extension MessagePackable {
 }
 
 struct MessagePacker {
+
+    static func packBin(value: any MessagePackable) -> Result<Data, MessagePackError> {
+        guard let value = value as? Data else {
+            return .failure(.invalidData)
+        }
+        if value.count <= UInt8.max {
+            return .success(Data([MessagePackType.bin_8.rawValue, UInt8(value.count)] + value))
+        } else if value.count <= UInt16.max {
+            return .success(
+                Data([MessagePackType.bin_16.rawValue] + MessagePacker.byteArray(from: UInt16(value.count)) + value)
+            )
+        } else if value.count <= UInt32.max {
+            return .success(
+                Data([MessagePackType.bin_32.rawValue] + MessagePacker.byteArray(from: UInt32(value.count)) + value)
+            )
+        } else {
+            return .failure(.constraintOverflow)
+        }
+    }
 
     static func packExt(
         value: any MessagePackable,

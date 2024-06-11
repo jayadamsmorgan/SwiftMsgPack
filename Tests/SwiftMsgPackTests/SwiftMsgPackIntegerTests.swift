@@ -83,4 +83,23 @@ final class SwiftMsgPackIntegerTests: XCTestCase {
         }
     }
 
+    func testIntPackUnpack() {
+        let i = Int(54)
+        let packResult = i.pack()
+        switch packResult {
+        case .success(let data):
+            let msgData = MessagePackData(data: data)
+            let unpackResult = msgData.unpack()
+            switch unpackResult {
+            case .success(let resultArray):
+                XCTAssertEqual(resultArray[0] as! Int64, 54)
+            case .failure(let error):
+                XCTFail("Unpacking error: \(error)")
+            }
+        case .failure(let error):
+            XCTFail("Packing error: \(error)")
+        }
+
+    }
+
 }

@@ -157,7 +157,7 @@ extension Date: MessagePackable {
     }
 }
 
-extension Array: MessagePackable where Element: MessagePackable {
+extension Array: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .value(self)
     }
@@ -169,7 +169,7 @@ extension Bool: MessagePackable {
     }
 }
 
-extension Dictionary: MessagePackable where Key: MessagePackable, Value: MessagePackable {
+extension Dictionary: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .value(self)
     }
