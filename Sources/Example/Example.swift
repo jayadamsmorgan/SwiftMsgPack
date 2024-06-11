@@ -10,6 +10,8 @@ struct Example: MessagePackable {
     var map: [String: Int] = ["a": 1, "b": 2, "c": 3]
     var timestamp: Date = Date()
 
+    var optional: Int? = nil
+
     func packValue() -> MessagePackValue {
         return .structure([
             .string(name, encoding: .utf8),
@@ -18,6 +20,7 @@ struct Example: MessagePackable {
             .value(array),
             .value(map),
             .value(timestamp),
+            .value(optional),
         ])
     }
 

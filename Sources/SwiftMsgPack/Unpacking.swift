@@ -418,7 +418,7 @@ public class MessagePackData {
             i += 1
         }
         guard i == data.count else {
-            return .failure(.unpackIndexOutOfBounds)
+            return .failure(.unpackIteratorError)
         }
         i = 0
         return .success(result)

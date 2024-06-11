@@ -15,11 +15,12 @@ public enum MessagePackError: Error {
     case unpackMapCountNotEven
     case unpackMapKeyNotHashable
     case unpackStringError
+    case unpackIteratorError
 }
 
-public enum MessagePackValue {
-    case value(any MessagePackable)
-    case valueWithOption(any MessagePackable, option: MessagePackType)
+public indirect enum MessagePackValue {
+    case value((any MessagePackable)?)
+    case valueWithOption((any MessagePackable)?, option: MessagePackType)
     case string(String, encoding: String.Encoding = .utf8)
     case structure([MessagePackValue])
     case structureAsExt(id: Int8, [MessagePackValue], constraint: MessagePackType? = nil)
@@ -51,7 +52,7 @@ public extension MessagePackable {
         }
     }
 
-    private func pack(value: MessagePackable?) -> Result<Data, MessagePackError> {
+    private func pack(value: (any MessagePackable)?) -> Result<Data, MessagePackError> {
         guard let value else {
             return .success(Data([MessagePackType.nil.rawValue]))
         }
@@ -117,7 +118,7 @@ public extension MessagePackable {
     }
 
     private func packWithOption(
-        value: MessagePackable?,
+        value: (any MessagePackable)?,
         option: MessagePackType
     ) -> Result<Data, MessagePackError> {
         guard let value else {

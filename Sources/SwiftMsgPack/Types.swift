@@ -179,9 +179,9 @@ extension Optional: MessagePackable where Wrapped: MessagePackable {
     public func packValue() -> MessagePackValue {
         switch self {
         case .none:
-            return .value(Optional<Wrapped>.none)
+            return .value(nil)
         case .some(let value):
-            return value.packValue()
+            return .value(value)
         }
     }
 }
