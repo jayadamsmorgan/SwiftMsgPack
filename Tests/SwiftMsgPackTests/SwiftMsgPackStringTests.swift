@@ -6,7 +6,7 @@ final class SwiftMsgPackStringTests: XCTestCase {
 
     // TODO: Async tests
 
-    func testStringPack() {
+    func testPackStringEmpty() {
         let emptyString = ""
         let packedEmpty = emptyString.pack()
         switch packedEmpty {
@@ -16,7 +16,9 @@ final class SwiftMsgPackStringTests: XCTestCase {
         case .failure(let error):
             XCTFail("Packing error: \(error)")
         }
+    }
 
+    func testPackString() {
         let string = "Hello, World!"
         let packed = string.pack()
         switch packed {
@@ -78,7 +80,7 @@ final class SwiftMsgPackStringTests: XCTestCase {
         }
     }
 
-    func testStringPackWithConstraints() {
+    func testPackStringWithConstraints() {
         let emptyString = ""
         let packedEmpty = emptyString.pack(constraint: .str_8)
         switch packedEmpty {
@@ -139,7 +141,7 @@ final class SwiftMsgPackStringTests: XCTestCase {
         XCTAssertEqual(packed6, .failure(.invalidConstraint))
     }
 
-    func testStringPackWithEncoding() {
+    func testPackStringWithEncoding() {
         let emptyString = ""
         let packedEmpty = emptyString.pack(with: .utf16)
         switch packedEmpty {
@@ -211,7 +213,7 @@ final class SwiftMsgPackStringTests: XCTestCase {
         }
     }
 
-    func testStringPackUnpack() {
+    func testPackUnpackString() {
         let i = "Hello, World!"
         let packResult = i.pack()
         switch packResult {

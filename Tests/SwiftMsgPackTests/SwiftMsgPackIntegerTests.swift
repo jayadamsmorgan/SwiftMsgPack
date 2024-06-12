@@ -6,7 +6,7 @@ final class SwiftMsgPackIntegerTests: XCTestCase {
 
     // TODO: Async tests
 
-    func testIntPack() {
+    func testPackInt64() {
         let int1: Int64 = 0
         let packed1 = int1.pack()
         switch packed1 {
@@ -19,7 +19,9 @@ final class SwiftMsgPackIntegerTests: XCTestCase {
         case .failure(let error):
             XCTFail("Packing error: \(error)")
         }
+    }
 
+    func testPackInt() {
         let int2: Int = 123_456_789
         let packed2 = int2.pack()
         switch packed2 {
@@ -31,7 +33,9 @@ final class SwiftMsgPackIntegerTests: XCTestCase {
         case .failure(let error):
             XCTFail("Packing error: \(error)")
         }
+    }
 
+    func testPackUInt8() {
         let int3: UInt8 = 0x7d
         let packed3 = int3.packWithFixInt()
         switch packed3 {
@@ -70,7 +74,9 @@ final class SwiftMsgPackIntegerTests: XCTestCase {
         case .failure(let error):
             XCTFail("Packing error: \(error)")
         }
+    }
 
+    func testPackUInt64() {
         let int6: UInt64 = 123_456_789_101
         let packed6 = int6.pack()
         switch packed6 {
@@ -83,7 +89,72 @@ final class SwiftMsgPackIntegerTests: XCTestCase {
         }
     }
 
-    func testIntPackUnpack() {
+    func testPackInt8() {
+        let int8: Int8 = 123
+        let packed8 = int8.pack()
+        switch packed8 {
+        case .success(let data):
+            XCTAssertEqual(data[0], MessagePackType.int_8.rawValue)
+            let bytes = withUnsafeBytes(of: int8.bigEndian, Array.init)
+            XCTAssertEqual(data[1...].map { UInt8($0) }, bytes.map { UInt8($0) })
+        case .failure(let error):
+            XCTFail("Packing error: \(error)")
+        }
+    }
+
+    func testPackUInt16() {
+        let int7: UInt16 = 12345
+        let packed7 = int7.pack()
+        switch packed7 {
+        case .success(let data):
+            XCTAssertEqual(data[0], MessagePackType.uint_16.rawValue)
+            let bytes = withUnsafeBytes(of: int7.bigEndian, Array.init)
+            XCTAssertEqual(data[1...].map { UInt8($0) }, bytes.map { UInt8($0) })
+        case .failure(let error):
+            XCTFail("Packing error: \(error)")
+        }
+    }
+
+    func testPackInt16() {
+        let int9: Int16 = 12345
+        let packed9 = int9.pack()
+        switch packed9 {
+        case .success(let data):
+            XCTAssertEqual(data[0], MessagePackType.int_16.rawValue)
+            let bytes = withUnsafeBytes(of: int9.bigEndian, Array.init)
+            XCTAssertEqual(data[1...].map { UInt8($0) }, bytes.map { UInt8($0) })
+        case .failure(let error):
+            XCTFail("Packing error: \(error)")
+        }
+    }
+
+    func testPackUInt32() {
+        let int10: UInt32 = 123_456
+        let packed10 = int10.pack()
+        switch packed10 {
+        case .success(let data):
+            XCTAssertEqual(data[0], MessagePackType.uint_32.rawValue)
+            let bytes = withUnsafeBytes(of: int10.bigEndian, Array.init)
+            XCTAssertEqual(data[1...].map { UInt8($0) }, bytes.map { UInt8($0) })
+        case .failure(let error):
+            XCTFail("Packing error: \(error)")
+        }
+    }
+
+    func testPackInt32() {
+        let int11: Int32 = 123_456
+        let packed11 = int11.pack()
+        switch packed11 {
+        case .success(let data):
+            XCTAssertEqual(data[0], MessagePackType.int_32.rawValue)
+            let bytes = withUnsafeBytes(of: int11.bigEndian, Array.init)
+            XCTAssertEqual(data[1...].map { UInt8($0) }, bytes.map { UInt8($0) })
+        case .failure(let error):
+            XCTFail("Packing error: \(error)")
+        }
+    }
+
+    func testPackUnpackInt() {
         let i = Int(54)
         let packResult = i.pack()
         switch packResult {

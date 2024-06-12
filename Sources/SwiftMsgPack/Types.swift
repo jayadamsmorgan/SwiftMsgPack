@@ -196,7 +196,7 @@ public struct Ext: MessagePackable, Equatable {
     }
 
     public var utype: UInt8 {
-        UInt8(type - Int8.min)
+        UInt8(Int(type) - Int(Int8.min))
     }
 
     public init(type: Int8, data: Data) {
