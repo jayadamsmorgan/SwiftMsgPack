@@ -1,5 +1,8 @@
 import Foundation
 
+/**
+    Error type for MessagePack Packing/Unpacking.
+*/
 public enum MessagePackError: Error {
     case unknownType
     case invalidData
@@ -18,21 +21,138 @@ public enum MessagePackError: Error {
     case unpackIteratorError
 }
 
-public indirect enum MessagePackValue {
+/**
+    Enum for representing how to pack a structure.
+*/
+public enum MessagePackValue {
+
+    /**
+        Instructs packing mechanism to pack a value with default options.
+
+        This will presumably choose the smallest format to pack a value, except for Integers.
+
+        Int and Int64 will always be packed as Int64.
+        In order to use other packing types use the corresponing Swift type.
+        Same goes for UInt and UInt64.
+
+        - Parameter value: The value to be packed.
+    */
     case value((any MessagePackable)?)
+
+    /**
+        Instructs packing mechanism to pack a value with a specified constraint.
+
+        This will try to pack the value with the provided constraint and will return an error on packing if it's not possible.
+
+        - Parameter value: The value to be packed.
+        - Parameter option: The constraint type for packing.
+    */
     case valueWithOption((any MessagePackable)?, option: MessagePackType)
+
+    /**
+        Instructs packing mechanism to pack a String value with a specified encoding.
+
+        This will choose the smallest format to pack a String with the provided encoding.
+
+        - Parameter value: The value to be packed.
+        - Parameter encoding: Encoding for packing a value.
+    */
     case string(String, encoding: String.Encoding = .utf8)
+
+    /**
+        Instructs packing mechanism on how to pack a structure.
+
+        Usage:
+     
+        ```swift
+        func packValue() -> MessagePackValue {
+            .structure([
+                .value(someValue),
+                .valueWithOption(someValue, option: someOption),
+                .string(someString),
+                .structure([
+                    .value(someValue)
+                ]),
+            ])
+        }
+        ```
+
+        - Parameter values: The array of MessagePackValue cases.
+    */
     case structure([MessagePackValue])
+
+    /**
+        Instructs packing mechanism on how to pack a structure as an Ext type.
+
+        If the constraint parameter is not present:
+        This will try pack a structure with the smallest possible format and a type.
+
+        If the constraint parameter is present:
+        This will try to pack a structure with the specified constraint
+        and a type. It will return an error on packing if it's not possible.
+        Constraint parameter should be an ext type: .fixext_1, .fixext_2, .ext_8, .ext_16, etc.
+
+        Usage:
+     
+        ```swift
+        func packValue() -> MessagePackValue {
+            .structureAsExt(
+                id: someId,
+                [
+                    .value(someValue),
+                    .valueWithOption(someValue, option: someOption),
+                    .string(someString),
+                    .structure([
+                        .value(someValue)
+                    ]),
+                ],
+                constraint: .ext_32
+            )
+        }
+        ```
+
+        - Parameters:
+            - id: Signed 8-bit integer representing type of an Ext type.
+            - values: The array of MessagePackValue cases.
+            - constraint: The optional constraint type for packing.
+    */
     case structureAsExt(id: Int8, [MessagePackValue], constraint: MessagePackType? = nil)
 }
 
+/**
+    Protocol to allow a type or a struct to be packable with MessagePack.
+
+    Some standard types are already MessagePackable, such as Integers, String, Array, Dictionary, etc.
+*/
 public protocol MessagePackable {
+
+    /**
+        Function to provide MessagePackValue to the packing mechanism.
+
+        - Returns: MessagePackValue to instruct packing mechanism on how to pack this type/struct/class.
+    */
     func packValue() -> MessagePackValue
 }
 
 public extension MessagePackable {
 
+    /**
+        Packs the value with MessagePack synchronously.
+
+        - Returns: Data with packed bytes or MessagePackError if there was an error during packing.
+    */
     func pack() -> Result<Data, MessagePackError> {
+        let value = packValue()
+        return pack(value: value)
+    }
+
+    /**
+        Packs the value with MessagePack asynchronously.
+
+        - Returns: Data with packed bytes or MessagePackError if there was an error during packing.
+    */
+    @available(macOS 10.15.0, iOS 15.0, *)
+    func pack() async -> Result<Data, MessagePackError> {
         let value = packValue()
         return pack(value: value)
     }
@@ -97,23 +217,6 @@ public extension MessagePackable {
             return MessagePacker.packExt(value: value)
         default:
             return .failure(.unknownType)
-        }
-    }
-
-    @available(macOS 10.15.0, iOS 15.0, *)
-    func pack() async -> Result<Data, MessagePackError> {
-        let value = packValue()
-        switch value {
-        case .value(let value):
-            return pack(value: value)
-        case .valueWithOption(let value, let option):
-            return packWithOption(value: value, option: option)
-        case .string(let value, let encoding):
-            return MessagePacker.packString(value: value, encoding: encoding)
-        case .structure(let values):
-            return packStructure(values: values)
-        case .structureAsExt(let id, let values, let constraint):
-            return packStructureAsExt(values: values, id: id, constraint: constraint)
         }
     }
 

@@ -1,12 +1,16 @@
 import Foundation
 
+/**
+    Enum to represent types of packing with MessagePack.
+    Contains byte representation.
+*/
 public enum MessagePackType: UInt8 {
 
-    public static let positive_fixint_max: UInt8 = 0x7f
-    public static let negative_fixint_max: UInt8 = 0xff
-    public static let fixmap_max: UInt8 = fixarray.rawValue - 1
-    public static let fixarray_max: UInt8 = fixstr.rawValue - 1
-    public static let fixstr_max: UInt8 = `nil`.rawValue - 1
+    internal static let positive_fixint_max: UInt8 = fixmap.rawValue - 1
+    internal static let negative_fixint_max: UInt8 = 0xff
+    internal static let fixmap_max: UInt8 = fixarray.rawValue - 1
+    internal static let fixarray_max: UInt8 = fixstr.rawValue - 1
+    internal static let fixstr_max: UInt8 = `nil`.rawValue - 1
 
     case positive_fixint = 0x00
     case fixmap = 0x80
@@ -46,7 +50,7 @@ public enum MessagePackType: UInt8 {
     case negative_fixint = 0xe0
 }
 
-extension Int: MessagePackable {  // arch(32) -> Int32 : arch(64) -> Int64
+extension Int: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .int_64)
     }
@@ -76,7 +80,7 @@ extension Int64: MessagePackable {
     }
 }
 
-extension UInt: MessagePackable {  // arch(32) -> UInt32 : arch(64) -> UInt64
+extension UInt: MessagePackable {
     public func packValue() -> MessagePackValue {
         return .valueWithOption(self, option: .uint_64)
     }
@@ -87,7 +91,32 @@ extension UInt8: MessagePackable {
         return .valueWithOption(self, option: .uint_8)
     }
 
+    /**
+        Packs the UInt8 as the fixint type with MessagePack synchronously.
+
+        For positive fixint value has to be in range of 0...127.
+        For negative fixint value has to be in range of 0...31.
+
+        - Parameter negative: If true, will pack as a negative fixint, otherwise will pack as a positive fixint
+
+        - Returns: Data with packed bytes or MessagePackError if there was an error during packing.
+    */
     public func packWithFixInt(negative: Bool = false) -> Result<Data, MessagePackError> {
+        return MessagePacker.packUInt8WithFixInt(value: self, negative: negative)
+    }
+
+    /**
+        Packs the UInt8 as the fixint type with MessagePack asynchronously.
+
+        For positive fixint value has to be in range of 0...127.
+        For negative fixint value has to be in range of 0...31.
+
+        - Parameter negative: If true, will pack as a negative fixint, otherwise will pack as a positive fixint
+
+        - Returns: Data with packed bytes or MessagePackError if there was an error during packing.
+    */
+    @available(macOS 10.15.0, iOS 15.0, *)
+    public func packWithFixInt(negative: Bool = false) async -> Result<Data, MessagePackError> {
         return MessagePacker.packUInt8WithFixInt(value: self, negative: negative)
     }
 }
@@ -128,6 +157,22 @@ extension String: MessagePackable {
         return .string(self, encoding: .utf8)
     }
 
+    /**
+        Packs the String with MessagePack with provided encoding and an optional constraint synchronously.
+
+        If the constraint parameter is not present:
+        This will try pack a String with the provided encoding smallest possible format.
+
+        If the constraint parameter is present:
+        This will try to pack a structure with the specified constraint
+        and a type. It will return an error on packing if it's not possible.
+        Constraint parameter should be an ext type (.str_8, .str_16, .str_32).
+
+        - Parameter encoding: Encoding to pack a String with.
+        - Parameter constraint: Optional constraint to pack a String with.
+
+        - Returns: Data with packed bytes or MessagePackError if there was an error during packing.
+    */
     public func pack(
         with encoding: String.Encoding = .utf8,
         constraint: MessagePackType? = nil
@@ -135,6 +180,22 @@ extension String: MessagePackable {
         return MessagePacker.packString(value: self, encoding: encoding, constraint: constraint)
     }
 
+    /**
+        Packs the String with MessagePack with provided encoding and an optional constraint asynchronously.
+
+        If the constraint parameter is not present:
+        This will try pack a String with the provided encoding smallest possible format.
+
+        If the constraint parameter is present:
+        This will try to pack a structure with the specified constraint
+        and a type. It will return an error on packing if it's not possible.
+        Constraint parameter should be an ext type (.str_8, .str_16, .str_32).
+
+        - Parameter encoding: Encoding to pack a String with.
+        - Parameter constraint: Optional constraint to pack a String with.
+
+        - Returns: Data with packed bytes or MessagePackError if there was an error during packing.
+    */
     @available(macOS 10.15.0, iOS 15.0, *)
     public func pack(
         with encoding: String.Encoding = .utf8,
@@ -186,15 +247,31 @@ extension Optional: MessagePackable where Wrapped: MessagePackable {
     }
 }
 
+/**
+    Type representing an Ext type in MessagePack.
+*/
 public struct Ext: MessagePackable, Equatable {
 
+    /**
+        Signed 8 bit Integer representing `type` byte in Ext type.
+    */
     public let type: Int8
+
+    /**
+        Data containing bytes in Ext type.
+    */
     public let data: Data
 
+    /**
+        Length of data Ext type contains represented by an unsigned 32 bit Integer.
+    */
     public var size: UInt32 {
         UInt32(data.count)
     }
 
+    /**
+        Unsigned 8 bit Integer representing `type` byte in Ext type.
+    */
     public var utype: UInt8 {
         UInt8(Int(type) - Int(Int8.min))
     }

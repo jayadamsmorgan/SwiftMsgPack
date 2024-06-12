@@ -65,7 +65,8 @@ public struct ExampleApp {
             print("Packed:\n\(packed.withUnsafeBytes(Array.init))")
             let unpacked: [Any?] = try MessagePackData(data: packed).unpack().get()
             print("Unpacked:\n\(unpacked)")
-            let _ = unpacked[1] as! Int64  // Int and Int64 are packed as Int64 but unpacked as Int64 only
+            // Int and Int64 are packed as Int64 but unpacked as Int64 only, same goes for UInt and UInt64:
+            let _ = unpacked[1] as! Int64
         } catch {
             print("Unpacking error: \(error)")
         }

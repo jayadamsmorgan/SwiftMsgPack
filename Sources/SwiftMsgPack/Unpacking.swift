@@ -1,7 +1,21 @@
 import Foundation
 
+/**
+    Wrapper class around Data used for unpacking MessagePack bytes.
+
+    Usage:
+
+    ```swift
+    let someData: Data = ...
+    let msgPackData = MessagePackData(data: data)
+    msgPackData.unpack()
+    ```
+*/
 public class MessagePackData {
 
+    /**
+        MessagePack byte array to be unpacked.
+    */
     public var data: Data
 
     fileprivate var i: Int = 0
@@ -10,12 +24,24 @@ public class MessagePackData {
         self.data = data
     }
 
-    @available(macOS 10.15.0, iOS 15.0, *)
-    public func unpack() async -> Result<[Any?], MessagePackError> {
+    /**
+        Unpacks MessagePack byte array synchronously.
+
+        - Returns: Array of type Optional<Any> with unpacked values or MessagePackError
+        if there is an error unpacking the values.
+    */
+    public func unpack() -> Result<[Any?], MessagePackError> {
         return unpack(itemAmount: nil)
     }
 
-    public func unpack() -> Result<[Any?], MessagePackError> {
+    /**
+        Unpacks MessagePack byte array asynchronously.
+
+        - Returns: Array of type Optional<Any> with unpacked values or MessagePackError
+        if there is an error unpacking the values.
+    */
+    @available(macOS 10.15.0, iOS 15.0, *)
+    public func unpack() async -> Result<[Any?], MessagePackError> {
         return unpack(itemAmount: nil)
     }
 
