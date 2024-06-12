@@ -2,7 +2,7 @@
 
 # SwiftMsgPack 
 
-[WIP] Really simple Swift library for [MessagePack][msgpack]
+Really simple Swift library for [MessagePack][msgpack]
 
 </div>
 
